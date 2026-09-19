@@ -2,7 +2,7 @@
 // One semantic slot per row; all four clients use the SAME lucide id.
 import 'package:flutter_lucide/flutter_lucide.dart';
 
-/// Semantic icon slots shared by all four ABCP clients.
+/// Semantic icon slots shared by all four Easy Agent clients.
 abstract final class AppIcons {
   static const add = LucideIcons.plus;
   static const apps = LucideIcons.layout_grid;
