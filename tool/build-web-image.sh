@@ -5,7 +5,7 @@
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REGISTRY="${REGISTRY:-forgejo.develop.10.199.64.20.nip.io}"
-NAMESPACE="${NAMESPACE:-abcp}"
+NAMESPACE="${NAMESPACE:-easylab}"
 NAME="${NAME:-agent-flutter}"
 TAG="${TAG:-$(date +%Y%m%d%H%M%S)}"
 DEST="${REGISTRY}/${NAMESPACE}/${NAME}:${TAG}"

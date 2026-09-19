@@ -29,7 +29,7 @@ FLATPAK="${FLATPAK:-flatpak}"
 RUNTIME_VERSION="${RUNTIME_VERSION:-24.08}"
 OUT="${OUT:-/tmp/opencode/Agent.flatpak}"
 WORK="${WORK:-/tmp/opencode/flatpak-build}"
-APP_ID="abcp.agent.flutter"
+APP_ID="easy.agent.flutter"
 USER_DIR="${FLATPAK_USER_DIR:-$HOME/.local/share/flatpak}"
 
 echo "==> 1/6 flutter build linux --release"
