@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Trust the private ingress CA in addition to the system roots. The Android
+     system HTTP stack (Cronet) verifies TLS through this config, so the app's
+     Cronet transport accepts the self-signed agent ingress exactly as the
+     Compose client does. cleartext stays disabled. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/agent_ca" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

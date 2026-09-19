@@ -1,7 +1,7 @@
 name: agent_app
 description: "Easy Agent chat client (agent.v1.AgentService via easy-rpc)."
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.1.0+2
 
 environment:
   sdk: ^3.13.2
@@ -25,13 +25,18 @@ dependencies:
   agent_client_sdk:
     git:
       url: https://github.com/easy-utils/agent-sdk-dart.git
-      ref: v0.16.2
+      ref: v0.16.3
   easy_rpc:
     git:
       url: https://github.com/easy-utils/easy-rpc-dart.git
-      ref: v3.0.2
+      ref: v3.0.3
   protobuf: ^6.1.0
   http2: ^2.3.0
+  # Android system HTTP stack (Chromium Cronet): HTTP/1+2+3 via the platform,
+  # and — crucially — it honors res/xml/network_security_config.xml, so the
+  # private ingress CA is trusted exactly as on the Compose client. Only used
+  # on Android (see lib/transport_io.dart); a no-op dep elsewhere.
+  cronet_http: ^1.9.0
   record: ^7.1.1
   drift: ^2.35.0
   drift_flutter: ^0.3.1

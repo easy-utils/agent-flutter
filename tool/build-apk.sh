@@ -6,6 +6,14 @@
 # single universal APK per version and every supported device is aarch64, so
 # we restrict the Flutter target platform to arm64 (~37MB).
 #
+# `cronetHttpNoPlay=true` selects the EMBEDDED Cronet (`cronet-embedded`) over
+# the Google Play Services one. Two reasons:
+#   * it works on devices without Play Services (private fleet), and
+#   * play-services-cronet pulls `cronet-api` + `cronet-shared`, which both
+#     declare namespace `org.chromium.net`; AGP 9's manifest merger rejects
+#     that clash outright.
+# This define MUST be set for any Android build (debug or release).
+#
 # For emulator/x86_64 debugging build locally WITHOUT --target-platform.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -14,7 +22,8 @@ export ANDROID_HOME="${ANDROID_HOME:-/home/user/Android/sdk}"
 export JAVA_HOME="${JAVA_HOME:-/opt/tools/mise/installs/java/17.0.2}"
 
 /home/user/flutter/bin/flutter build apk --release \
-  --target-platform android-arm64
+  --target-platform android-arm64 \
+  --dart-define=cronetHttpNoPlay=true
 
 echo
 echo "APK: build/app/outputs/flutter-apk/app-release.apk"
