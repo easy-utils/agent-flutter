@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "@@context": "ZergX",
+  "@@context": "EasyAgent",
   "appTitle": "Easy Agent",
   "gatewayUrl": "Gateway URL",
   "tokenLabel": "Token",

@@ -1,6 +1,6 @@
 {
   "@@locale": "zh",
-  "@@context": "ZergX",
+  "@@context": "EasyAgent",
   "appTitle": "Easy Agent",
   "gatewayUrl": "网关地址",
   "tokenLabel": "令牌",
