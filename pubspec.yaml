@@ -1,7 +1,7 @@
 name: agent_app
 description: "Easy Agent chat client (agent.v1.AgentService via easy-rpc)."
 publish_to: 'none'
-version: 0.1.1+4
+version: 0.1.2+5
 
 environment:
   sdk: ^3.13.2
