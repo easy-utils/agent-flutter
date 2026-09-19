@@ -19,11 +19,14 @@ Transport buildAgentTransport({
   }
   // Composition root: pick the adapter (`TransportMode.http2` today; switching
   // to `io` is a one-line change) and install metadata/deadline interceptors.
+  // The SecurityContext must be threaded through explicitly: the http2 adapter
+  // dials with SecureSocket, so a client carrying the CA is NOT enough.
   return connect(
     baseUrl: baseUrl,
     token: token,
     mode: TransportMode.http2,
     timeoutMs: timeoutMs,
     httpClient: io.HttpClient(context: sc),
+    securityContext: sc,
   );
 }

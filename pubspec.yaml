@@ -25,11 +25,11 @@ dependencies:
   agent_client_sdk:
     git:
       url: https://github.com/easy-utils/agent-sdk-dart.git
-      ref: v0.16.1
+      ref: v0.16.2
   easy_rpc:
     git:
       url: https://github.com/easy-utils/easy-rpc-dart.git
-      ref: v3.0.1
+      ref: v3.0.2
   protobuf: ^6.1.0
   http2: ^2.3.0
   record: ^7.1.1
