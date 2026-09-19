@@ -1,0 +1,310 @@
+{
+  "@@locale": "zh",
+  "@@context": "ZergX",
+  "appTitle": "Easy Agent",
+  "gatewayUrl": "网关地址",
+  "tokenLabel": "令牌",
+  "connect": "连接",
+  "connecting": "连接中…",
+  "search": "搜索",
+  "searchHint": "搜索会话名称",
+  "recent": "最近",
+  "me": "我",
+  "tabChat": "会话",
+  "tabConfig": "设置",
+  "loadError": "加载失败：{arg1}",
+  "@loadError": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "markRead": "标记已读",
+  "typeMessage": "输入消息…",
+  "chatTitle": "会话",
+  "thinkLabel": "思考",
+  "compactedLabel": "历史已压缩 · 查看摘要",
+  "copied": "已复制",
+  "copy": "复制",
+  "error": "错误",
+  "undo": "撤销",
+  "retry": "重试",
+  "editMessage": "编辑消息",
+  "undoTitle": "撤销此消息？",
+  "undoBody": "将删除该消息，并撤销之后的所有消息。",
+  "retryTitle": "重发此消息？",
+  "retryBody": "将撤销该消息及其之后的所有消息，并以原文重新发送。",
+  "cancel": "取消",
+  "confirm": "确定",
+  "apply": "应用",
+  "delete": "删除",
+  "loading": "加载中…",
+  "loadEarlier": "加载更早的消息",
+  "thinking": "思考中…",
+  "running": "运行中…",
+  "sendFailed": "发送失败: {arg1}",
+  "@sendFailed": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "send": "发送",
+  "attach": "添加附件",
+  "dropToAttach": "松开以添加为附件",
+  "followSystem": "跟随系统",
+  "themeLight": "浅色",
+  "themeDark": "深色",
+  "folderNotAllowed": "不支持拖入文件夹——请拖入单个文件",
+  "image": "图片",
+  "takePhoto": "拍照",
+  "chooseImage": "从相册选图",
+  "chooseFile": "选择文件",
+  "uploadFailedRetry": "{arg1} 个附件上传失败——请重试或移除后再发送",
+  "@uploadFailedRetry": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "compactHistory": "压缩历史",
+  "mailbox": "收件箱",
+  "container": "容器",
+  "deleteSession": "删除会话",
+  "historyCompacted": "历史已压缩",
+  "nothingToCompact": "历史太短，无需压缩",
+  "back": "返回",
+  "refresh": "刷新",
+  "taskDone": "已完成",
+  "settingsTitle": "会话设置",
+  "modelLabel": "模型",
+  "variantLabel": "推理档位",
+  "variantNone": "默认（不指定档位）",
+  "presetLabel": "预设",
+  "deleteSessionTitle": "删除会话",
+  "deleteSessionBody": "删除会话\"{arg1}\"？",
+  "@deleteSessionBody": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSessionsTitle": "删除会话",
+  "deleteSessionsBody": "删除选中的 {arg1} 个会话？此操作不可撤销。",
+  "@deleteSessionsBody": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "selectSessions": "选择",
+  "selectAll": "全选",
+  "selectedCount": "已选 {arg1} 项",
+  "@selectedCount": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "addModel": "添加模型",
+  "holdToTalk": "按住说话",
+  "releaseToSend": "松开发送",
+  "abort": "中止",
+  "edit": "编辑",
+  "voiceMode": "语音",
+  "keyboardMode": "键盘",
+  "sessionInfo": "会话信息",
+  "voicePermission": "未获得麦克风权限",
+  "voiceTooShort": "录音太短",
+  "uploading": "上传中…",
+  "uploadFailed": "上传失败",
+  "capText": "文本",
+  "capImage": "图像",
+  "capVideo": "视频",
+  "capSpeech": "语音",
+  "capTranscription": "转写",
+  "capEmbedding": "向量",
+  "capReranking": "重排",
+  "capRealtime": "实时",
+  "fork": "分叉",
+  "failed": "失败: {arg1}",
+  "@failed": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "settings": "设置",
+  "appearance": "外观",
+  "darkMode": "深色模式",
+  "llm": "语言模型",
+  "llmProviders": "供应商",
+  "providers": "供应商",
+  "presets": "预设",
+  "workspace": "工作区",
+  "tools": "工具",
+  "language": "语言",
+  "switchBackend": "切换用户",
+  "backendsTitle": "用户",
+  "noSavedBackends": "暂无已保存的用户。",
+  "addBackend": "添加新用户",
+  "addBackendHint": "使用其它地址与令牌登录",
+  "deleteBackend": "移除用户",
+  "backendSection": "后端",
+  "providerTemplate": "模板（models.dev）",
+  "providerTemplateHint": "选择服务商自动填充",
+  "searchModels": "搜索模型…",
+  "noProviders": "暂无供应商，添加一个开始使用。",
+  "addProvider": "添加供应商",
+  "modelsCount": "{arg1} 个模型",
+  "@modelsCount": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "providerId": "供应商 ID",
+  "providerIdReq": "供应商 ID（必填）",
+  "apiType": "API 类型",
+  "apiTypeOpenai": "OpenAI",
+  "apiTypeAnthropic": "Anthropic",
+  "apiTypeGemini": "Gemini",
+  "baseUrl": "基础地址",
+  "apiKey": "API 密钥",
+  "test": "测试",
+  "testing": "测试中…",
+  "register": "注册",
+  "registering": "注册中…",
+  "saved": "已保存",
+  "noConfig": "无配置",
+  "configured": "已配置",
+  "needsConfig": "需配置",
+  "newPreset": "新建预设",
+  "presetId": "预设 ID…",
+  "create": "创建",
+  "noPresets": "暂无预设。",
+  "deletePreset": "删除预设",
+  "deletePresetBody": "删除预设 {arg1}？",
+  "@deletePresetBody": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "presetSummary": "最大 {arg1} 轮 · {arg2} 个工具",
+  "@presetSummary": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      },
+      "arg2": {
+        "type": "String"
+      }
+    }
+  },
+  "systemPrompt": "系统提示",
+  "maxTurns": "最大轮数",
+  "terminal": "终端",
+  "close": "关闭",
+  "noSession": "无会话",
+  "history": "历史",
+  "none": "无",
+  "download": "下载",
+  "noMessages": "暂无消息",
+  "consumed": "已消费",
+  "pending": "待审批",
+  "savedToDownloads": "已保存到「下载」：{arg1}",
+  "@savedToDownloads": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "timeJustNow": "刚刚",
+  "timeMinAgo": "{arg1} 分钟前",
+  "@timeMinAgo": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "timeHour": "{arg1} 小时前",
+  "@timeHour": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "timeDay": "{arg1} 天前",
+  "@timeDay": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "baseUrlReq": "基础地址（必填）",
+  "apiKeyReq": "API 密钥（必填）",
+  "save": "保存",
+  "noTools": "暂无工具",
+  "@agentLocaleApplied": {
+    "placeholders": {
+      "l": {
+        "type": "String"
+      }
+    }
+  },
+  "agentLocale": "Agent 语言",
+  "agentLocaleFollow": "跟随（UI 语言）",
+  "agentLocaleApplied": "Agent 语言已切换为 {l}",
+  "toolParams": "参数",
+  "showMore": "展开",
+  "showLess": "收起",
+  "systemPresetBadge": "系统",
+  "readOnlyPreset": "系统预设：只读，不可编辑",
+  "sysPromptByPreset": "系统提示由所选预设决定，不可直接修改。",
+  "requiredConfig": "必需配置",
+  "selectProviderFirst": "请先选择服务商",
+  "apiTypeOpenaiCompat": "OpenAI 兼容",
+  "modelsLabel": "模型",
+  "modelIdLabel": "模型 ID…",
+  "contextLengthLabel": "上下文",
+  "contextLengthRequired": "必须填写上下文长度（正整数）。",
+  "add": "添加",
+  "turnsByPreset": "最大轮数由所选预设决定。",
+  "testModelOk": "模型可用：{arg1}",
+  "connected": "已连接",
+  "connectionError": "连接错误：{arg1}",
+  "toolInputParams": "输入参数",
+  "content": "内容",
+  "metadata": "元数据",
+  "newSession": "新会话",
+  "noSessions": "暂无会话",
+  "apiTypeGateway": "Vercel AI 网关",
+  "apiTypeDeepseek": "DeepSeek",
+  "apiTypeCohere": "Cohere",
+  "capabilityLabel": "模态",
+  "nonTextModelHint": "非文本模型供工具调用，无需上下文窗口。",
+  "contextOptional": "可选 — 留空表示多模态模型",
+  "modelNameLabel": "显示名称…",
+  "authExpiredTitle": "认证失败",
+  "authExpiredBody": "服务器拒绝了请求：令牌缺失、无效或已被吊销。请在连接设置中更新令牌后重试。",
+  "signInAgain": "重新登录",
+  "defaultModel": "默认模型",
+  "defaultPreset": "默认预设",
+  "sessionGroupLabel": "分组",
+  "subsessionBadge": "子会话",
+  "subsessionCount": "{count} 个子会话"
+}

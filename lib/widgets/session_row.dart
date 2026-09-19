@@ -1,0 +1,292 @@
+import 'package:flutter/material.dart';
+
+import '../i18n.dart';
+import '../models.dart';
+import '../theme/app_theme.dart';
+import 'chat_avatar.dart';
+import '../icons.dart';
+
+/// Width of the fixed right-aligned timestamp slot in the session row. Sized
+/// for the longest relative label ("59 分钟前" / "23 hours ago") at the micro
+/// font size (10px); shorter labels simply leave slack. Keeping the slot
+/// constant makes every trailing chip (e.g. the subsession-count pill) end at
+/// the same x across all rows.
+const double _stampSlotWidth = 52;
+
+/// WeChat-style relative timestamp (locale-aware).
+String wechatTime(BuildContext context, String iso) {
+  final dt = DateTime.tryParse(iso)?.toLocal();
+  if (dt == null) return '';
+  final d = DateTime.now().difference(dt);
+  // Show a relative label for EVERY recent message — including "刚刚 / just
+  // now". (Previously zh returned '' for <1min, so a just-landed assistant
+  // message showed NO time at all.)
+  if (d.inMinutes < 1) return context.l10n.timeJustNow;
+  if (d.inMinutes < 60) {
+    return context.l10n.timeMinAgo('${d.inMinutes}');
+  }
+  if (d.inHours < 24) return context.l10n.timeHour('${d.inHours}');
+  if (d.inDays < 7) return context.l10n.timeDay('${d.inDays}');
+  return '${dt.month}/${dt.day}';
+}
+
+/// IM-style chat-list row: avatar | name + relative time | preview + unread
+/// dot. Standalone variant: the avatar is seeded by the SESSION NAME (there is
+/// no org/repo/branch), and "unread" is a client-local watermark dot (the
+/// agent does not track read state).
+class SessionRow extends StatelessWidget {
+  final Session session;
+  final bool isActive;
+  final String subtitle;
+
+  /// True when there is a newer message than the client's local read
+  /// watermark for this session.
+  final bool unread;
+
+  /// Number of unread messages (shown as a numeric badge when > 0).
+  final int unreadCount;
+
+  /// Selection mode: when true the row shows a leading checkbox instead of the
+  /// avatar and taps toggle selection rather than opening the session.
+  final bool selectable;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  /// Number of subsessions nested under this session (0 = none). When > 0 the
+  /// row shows an expand chevron + count chip; tapping it toggles [expanded].
+  final int childCount;
+
+  /// Whether the nested subsessions are currently shown.
+  final bool expanded;
+
+  /// Toggled when the user taps the expand chevron / count chip.
+  final VoidCallback? onToggleExpand;
+
+  /// This row renders as an indented child of a parent session.
+  final bool isChild;
+  const SessionRow({
+    super.key,
+    required this.session,
+    required this.isActive,
+    required this.subtitle,
+    required this.unread,
+    required this.onTap,
+    this.unreadCount = 0,
+    this.onLongPress,
+    this.selectable = false,
+    this.selected = false,
+    this.childCount = 0,
+    this.expanded = false,
+    this.onToggleExpand,
+    this.isChild = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = colorsOf(context);
+    final text = textOf(context);
+    final s = session;
+    final stamp = wechatTime(
+      context,
+      s.lastMessageAt.isNotEmpty ? s.lastMessageAt : s.updatedAt,
+    );
+    return Material(
+      color: selected
+          ? colors.primary.withValues(alpha: 0.14)
+          : isActive
+          ? colors.primary.withValues(alpha: 0.10)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          // Child rows are indented with a left connector so they visually
+          // nest under their parent.
+          child: Row(
+            children: [
+              if (isChild) ...[
+                const SizedBox(width: AppSpacing.md),
+                Container(
+                  width: 10,
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 2,
+                    height: 34,
+                    color: colors.mutedForeground.withValues(alpha: 0.35),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm - 4),
+              ],
+              // In selection mode the avatar becomes a checkbox (tap toggles).
+              if (selectable) ...[
+                Icon(
+                  selected
+                      ? AppIcons.success
+                      : AppIcons.circle,
+                  color: selected ? colors.primary : colors.mutedForeground,
+                  size: 24,
+                ),
+              ] else
+                // The avatar is seeded by the session name (branch slot), so a
+                // given session always renders the same color + honeycomb.
+                ChatAvatar(org: '', repo: '', branch: s.id, radius: 20),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            s.id,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.meta.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: isActive ? colors.primary : null,
+                            ),
+                          ),
+                        ),
+                        // A subsession (group == its parent's name) is marked.
+                        if (s.group.isNotEmpty && !isChild) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.primary.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              context.l10n.subsessionBadge,
+                              style: text.micro.copyWith(
+                                color: colors.primary,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+                        ],
+                        // Expand chevron + child count for parents.
+                        if (childCount > 0) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(999),
+                            onTap: onToggleExpand,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.mutedForeground.withValues(
+                                  alpha: 0.14,
+                                ),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    context.l10n.subsessionCount('$childCount'),
+                                    style: text.micro.copyWith(
+                                      color: colors.mutedForeground,
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                  Icon(
+                                    expanded
+                                        ? AppIcons.chevron_up
+                                        : AppIcons.chevron_down,
+                                    size: 13,
+                                    color: colors.mutedForeground,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        // The trailing timestamp occupies a FIXED-WIDTH,
+                        // right-aligned slot: the subsession pill (and every
+                        // other trailing chip) therefore ends at the same x on
+                        // every row instead of drifting with label length.
+                        SizedBox(
+                          width: _stampSlotWidth,
+                          child: Text(
+                            stamp,
+                            textAlign: TextAlign.right,
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                            style: text.micro.copyWith(
+                              color: colors.mutedForeground,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            subtitle,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: text.micro.copyWith(
+                              color: colors.mutedForeground,
+                            ),
+                          ),
+                        ),
+                        if (unread && !isActive && unreadCount > 0) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          _UnreadBadge(count: unreadCount),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small red pill showing the unread count (99+ past 99). Mirrors an IM app.
+class _UnreadBadge extends StatelessWidget {
+  final int count;
+  const _UnreadBadge({required this.count});
+  @override
+  Widget build(BuildContext context) {
+    final colors = colorsOf(context);
+    final text = textOf(context);
+    final label = count > 99 ? '99+' : '$count';
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18),
+      height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: colors.destructive,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Text(
+        label,
+        style: text.micro.copyWith(
+          color: Colors.white,
+          fontSize: 10,
+          height: 1,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}

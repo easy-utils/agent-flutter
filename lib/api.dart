@@ -1,0 +1,665 @@
+import 'dart:async';
+
+import 'dart:convert';
+
+import 'package:flutter/services.dart' show rootBundle;
+
+import 'package:agent_client_sdk/agent_client_sdk.dart' as sdk;
+import 'package:easy_rpc/easy_rpc.dart' as erpc;
+import 'package:fixnum/fixnum.dart' as fixnum;
+import 'package:protobuf/well_known_types/google/protobuf/struct.pb.dart' as wkt;
+
+import 'models.dart';
+import 'services/local_bytes_io.dart'
+    if (dart.library.js_interop) 'services/local_bytes_web.dart' as localbytes;
+import 'transport.dart';
+
+/// An auth rejection from the agent: missing / invalid / revoked bearer token
+/// (unauthenticated), or a tenant token reaching an admin-only surface
+/// (permission denied). Data loaders use this to surface the failure instead
+/// of silently rendering empty lists.
+bool isAuthError(Object e) =>
+    e is erpc.RPCError && (e.code == 16 || e.code == 7);
+
+/// Parsed watch/prompt stream event.
+class StreamEvent {
+  final String event;
+  final Map<String, dynamic> params;
+
+  /// Per-event id from the server (dedup key across replay/live overlap).
+  final String eid;
+
+  /// Turn id this event belongs to (stamped by the server), if present.
+  final String runId;
+
+  StreamEvent(this.event, Map<String, dynamic>? params, {this.eid = '', this.runId = ''})
+      : params = params ?? const {};
+  dynamic get(String key) => params[key];
+  String str(String key) => params[key] as String? ?? '';
+}
+
+/// One frame of the `watchSessions` list stream. [snapshot] marks the initial
+/// full list (client replaces everything with [upserts]); otherwise [upserts]
+/// are per-session updates and [removed] are deleted names.
+class SessionListEvent {
+  final bool snapshot;
+  final List<Session> upserts;
+  final List<String> removed;
+  SessionListEvent({
+    this.snapshot = false,
+    this.upserts = const [],
+    this.removed = const [],
+  });
+}
+
+/// CA certificate (PEM) used on native HTTP/2-TLS. Ignored on web.
+class AgentTls {
+  const AgentTls({this.caPem});
+  final String? caPem;
+}
+
+/// Thin client over a standalone abc agent: the typed agent.v1 client over
+/// HTTP/2-TLS (self-signed CA). Talks directly to agent.v1.AgentService — no
+/// gateway, no lab/ops/registry.
+class AgentBindApi {
+  final String baseUrl;
+  final String token;
+
+  // Strong-typed Connect client (h2 over TLS), direct to the agent. The
+  // transport is built here (caller owns it); the SDK ships only the generated
+  // client + messages, no transport primitive.
+  late final sdk.AgentServiceClient _agent;
+
+  AgentBindApi({required this.baseUrl, required this.token})
+      : _agent = _buildAgent(baseUrl, token);
+
+  static AgentTls? _tls;
+  static Future<void> _loadCa() async {
+    if (_tls != null) return;
+    try {
+      final data = await rootBundle.load('assets/certs/ca.crt');
+      _tls = AgentTls(
+          caPem: utf8.decode(
+              data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes)));
+    } catch (_) {
+      _tls = null;
+    }
+  }
+
+  /// Build the easy-rpc Transport for a base URL + bearer token + CA.
+  static sdk.AgentServiceClient _buildAgent(String baseUrl, String token) {
+    final trimmed =
+        baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final transport = buildAgentTransport(
+      baseUrl: trimmed,
+      token: token,
+      caPem: _tls?.caPem,
+    );
+    return sdk.AgentServiceClient(transport);
+  }
+
+  static Future<AgentBindApi> create(
+      {required String baseUrl, required String token}) async {
+    await _loadCa();
+    return AgentBindApi(baseUrl: baseUrl, token: token);
+  }
+
+  // ---- sessions ----
+
+  Future<List<Session>> listSessions() async {
+    final r = await _agent.listSessions(sdk.ListSessionsRequest());
+    return r.sessions.map(sessionFromPb).toList();
+  }
+
+  Future<Session> createSession(Map<String, dynamic> params) async {
+    // Only forward fields the caller actually set: an empty string would
+    // otherwise be written verbatim (and the agent now treats empty
+    // preset/model as "apply the tenant default").
+    final req = sdk.CreateSessionRequest(name: (params['name'] as String?) ?? '');
+    final model = (params['model'] as String?) ?? '';
+    if (model.isNotEmpty) req.model = model;
+    final variant = (params['variant'] as String?) ?? '';
+    if (variant.isNotEmpty) req.variant = variant;
+    final preset = (params['preset'] as String?) ?? '';
+    if (preset.isNotEmpty) req.preset = preset;
+    final org = (params['org'] as String?) ?? '';
+    if (org.isNotEmpty) req.org = org;
+    final repo = (params['repo'] as String?) ?? '';
+    if (repo.isNotEmpty) req.repo = repo;
+    final branch = (params['branch'] as String?) ?? '';
+    if (branch.isNotEmpty) req.branch = branch;
+    final r = await _agent.createSession(req);
+    return Session(
+      id: r.sessionName,
+      model: model,
+      variant: variant,
+      org: org,
+      repo: repo,
+      branch: branch,
+    );
+  }
+
+  Future<Session> getSession(String id) async {
+    final r = await _agent.getSession(sdk.GetSessionRequest(id: id));
+    return _sessionFromSessionResults(r.session);
+  }
+
+  Future<void> deleteSession(String id) =>
+      _agent.deleteSession(sdk.DeleteSessionRequest(id: id));
+
+  Future<String> prompt(String id, String prompt,
+      {List<String>? attachments}) async {
+    // The file codes MUST be forwarded as attachment refs: the server inserts
+    // a `file` part per attachment and splices them into the turn. Omitting
+    // them silently drops every picked image / file / recording.
+    final refs = [
+      for (final code in attachments ?? const <String>[])
+        sdk.FileRef(code: code),
+    ];
+    await for (final e
+        in _agent.prompt(sdk.PromptRequest(
+      id: id,
+      prompt: prompt,
+      attachments: refs,
+    ))) {
+      if (e.event == 'accepted') return e.params['message_id'] ?? '';
+    }
+    return '';
+  }
+
+  // ---- attachment upload/download (agent.v1 file) ----
+
+  Future<UploadedFile> uploadFile(UploadedFileSource src) async {
+    // Prefer the in-memory bytes (always present on web); fall back to reading
+    // the path on native when only a path was provided.
+    final bytes = src.bytes ??
+        (src.path.isNotEmpty
+            ? await localbytes.readLocalBytes(src.path)
+            : null);
+    if (bytes == null || bytes.isEmpty) {
+      throw StateError('attachment has no bytes: ${src.name}');
+    }
+    final r = await _agent.ingestFile(sdk.IngestFileRequest(
+      data: bytes,
+      name: src.name,
+      mime: src.mimeType,
+    ));
+    return UploadedFile(
+      code: r.code,
+      name: src.name,
+      mime: src.mimeType,
+      size: bytes.length,
+      deduped: false,
+    );
+  }
+
+  Future<List<int>> fetchFileBytes(String code) async {
+    final r = await _agent.getFile(sdk.GetFileRequest(code: code));
+    return r.data;
+  }
+
+  Future<({String? contentType, int length})> fileHead(String code) async {
+    final r = await _agent.getFileMeta(sdk.GetFileMetaRequest(code: code));
+    return (contentType: r.mime, length: r.size);
+  }
+
+  Future<(List<Message>, bool)> messages(String id,
+      {String? before, int limit = 30}) async {
+    final r = await _agent.listMessages(sdk.ListMessagesRequest(
+        id: id, limit: limit, before: before ?? ''));
+    final msgs = r.messages.map(messageFromPb).toList();
+    return (msgs, msgs.length >= limit);
+  }
+
+  /// Incremental read anchored on a client-known message id (`after`). Returns
+  /// the messages appended since that anchor plus the chain's current tip id.
+  /// `resync=true` means the anchor is gone (withdrawn / re-pointed chain) and
+  /// the caller must discard its local copy and re-fetch from scratch.
+  Future<({List<Message> messages, bool resync, String tipId})> messagesAfter(
+    String id,
+    String after, {
+    int limit = 200,
+  }) async {
+    final r = await _agent.listMessages(sdk.ListMessagesRequest(
+        id: id, limit: limit, after: after));
+    return (
+      messages: r.messages.map(messageFromPb).toList(),
+      resync: r.resync,
+      tipId: r.tipId,
+    );
+  }
+
+  Future<String> switchModel(String id, String model,
+      {String variant = ''}) async {
+    await _agent.setModel(
+        sdk.SetModelRequest(id: id, model: model, variant: variant));
+    return model;
+  }
+
+  Future<Session> settings(String id, Map<String, dynamic> settings) async {
+    // max_turns is optional: only set it when explicitly provided (>0),
+    // otherwise the update omits it (inherit from preset/default).
+    final maxTurns = settings['max_turns'] as int?;
+    final req = sdk.UpdateSettingsRequest(id: id);
+    // Only forward non-empty model/preset: empty means "leave unchanged" (the
+    // agent also rejects blank values on the update path). Other settings use
+    // the sentinel '' to clear where that is meaningful (locale, variant,
+    // system_prompt).
+    final model = (settings['model'] as String?) ?? '';
+    if (model.isNotEmpty) req.model = model;
+    final preset = (settings['preset'] as String?) ?? '';
+    if (preset.isNotEmpty) req.preset = preset;
+    req.systemPrompt = (settings['system_prompt'] as String?) ?? '';
+    req.locale = (settings['locale'] as String?) ?? '';
+    req.variant = (settings['variant'] as String?) ?? '';
+    if (maxTurns != null && maxTurns > 0) req.maxTurns = maxTurns;
+    final r = await _agent.updateSettings(req);
+    return _sessionFromSessionResults(r.session);
+  }
+
+  Future<Session> fork(String id, String branch) async {
+    final r = await _agent.fork(sdk.ForkRequest(id: id, name: branch));
+    return _sessionFromSessionResults(r.session);
+  }
+
+  Future<void> revert(String id, String? messageId) async {
+    await _agent.undo(sdk.UndoRequest(id: id, messageId: messageId ?? ''));
+  }
+
+  Future<bool> interrupt(String id) async {
+    final r = await _agent.interrupt(sdk.InterruptRequest(id: id));
+    return r.ok;
+  }
+
+  Future<bool> compact(String id) async {
+    final r = await _agent.compact(sdk.CompactRequest(id: id));
+    return r.ok;
+  }
+
+  Future<void> markRead(String id) async {
+    await _agent.undo(sdk.UndoRequest(id: id));
+  }
+
+  Future<(String, List<dynamic>)> state(String id) async {
+    final r = await _agent.state(sdk.StateRequest(id: id));
+    final st = StructUtils.toJson(r.state);
+    return ((st['status'] as String?) ?? 'idle', (st['parts'] as List?) ?? []);
+  }
+
+  Future<List<MailboxEntry>> mailbox(String id) async {
+    final r = await _agent.mailbox(sdk.MailboxRequest(id: id));
+    return r.mailbox.map((m) => MailboxEntry(
+          id: m.id,
+          msgType: m.msgType,
+          payload: m.payload,
+          effectiveAt: m.effectiveAt.isEmpty ? null : m.effectiveAt,
+          status: m.status,
+          createdAt: m.createdAt,
+          consumedAt: m.consumedAt.isEmpty ? null : m.consumedAt,
+        )).toList();
+  }
+
+  // ---- stream ----
+
+  Stream<StreamEvent> streamEvents(String sessionId, {String since = ''}) {
+    final sdkStream = _agent.watchSession(
+      sdk.WatchSessionRequest(id: sessionId, since: since),
+    );
+    return sdkStream.map((e) {
+      final params = StructUtils.toJson(e.params);
+      final runId = params['run_id'];
+      return StreamEvent(
+        e.event,
+        params,
+        eid: e.eid,
+        runId: runId is String ? runId : '',
+      );
+    });
+  }
+
+  /// Real-time session-list stream: an initial full snapshot (upserts = the
+  /// whole list) followed by per-session upserts and removals. No polling.
+  Stream<SessionListEvent> watchSessions() {
+    final sdkStream = _agent.watchSessions(sdk.WatchSessionsRequest());
+    return sdkStream.map((e) => SessionListEvent(
+          snapshot: e.snapshot,
+          upserts: e.upserts.map(sessionFromPb).toList(),
+          removed: e.removed,
+        ));
+  }
+
+  // ---- config / providers / models / presets / tools ----
+
+  Future<void> setToolConfigValue(
+          String extId, String name, Object? value) async {
+    await _agent.setExtensionConfig(sdk.SetExtensionConfigRequest(
+      extId: extId,
+      name: name,
+      value: wkt.Value(stringValue: '$value'),
+    ));
+  }
+
+  /// Server capability matrix (ListProvidersCatalog): canonical api type ->
+  /// capabilities its models may declare. Registration forms are driven by
+  /// this instead of a hardcoded list.
+  Future<Map<String, List<String>>> providerCatalog() async {
+    final r = await _agent.listProvidersCatalog(
+        sdk.ListProvidersCatalogRequest());
+    return {
+      for (final e in r.apiTypes.entries)
+        e.key: e.value.capabilities.toList(),
+    };
+  }
+
+  Future<Map<String, ProviderInfo>> providers() async {
+    final r = await _agent.listProviders(sdk.ListProvidersRequest());
+    final out = <String, ProviderInfo>{};
+    for (final p in r.providers) {
+      out[p.providerId] = ProviderInfo(
+        providerId: p.providerId,
+        capability: p.capability,
+        apiType: p.apiType,
+        baseUrl: p.baseUrl,
+        apiKey: p.apiKey,
+        headers: p.headers.map((k, v) => MapEntry(k, v)),
+        models: p.models
+            .map((m) => ProviderModel(
+                  id: m.id,
+                  name: m.name.isNotEmpty ? m.name : m.id,
+                  contextLimit: m.contextLimit.toInt(),
+                  modelType: m.modelType,
+                ))
+            .toList(),
+      );
+    }
+    return out;
+  }
+
+  Future<void> registerProvider(ProviderInfo p) async {
+    await _agent.registerProvider(sdk.RegisterProviderRequest(
+      provider: sdk.Provider(
+        providerId: p.providerId,
+        capability: p.capability,
+        apiType: p.apiType,
+        baseUrl: p.baseUrl,
+        apiKey: p.apiKey,
+        headers: p.headers?.entries,
+        models: p.models
+            .map((m) => sdk.ProviderModel(
+                  id: m.id,
+                  name: m.name,
+                  contextLimit: fixnum.Int64(m.contextLimit ?? 0),
+                  modelType: m.modelType,
+                ))
+            .toList(),
+      ),
+    ));
+  }
+
+  Future<void> deleteProvider(String pid) =>
+      _agent.deleteProvider(sdk.DeleteProviderRequest(providerId: pid));
+
+  Future<Map<String, dynamic>> testProvider(
+      {required String apiType,
+      required String baseUrl,
+      required String apiKey,
+      String providerId = '',
+      String? model,
+      String capability = 'text'}) async {
+    final r = await _agent.testProvider(sdk.TestProviderRequest(
+      providerId: providerId,
+      apiType: apiType,
+      baseUrl: baseUrl,
+      apiKey: apiKey,
+      model: model ?? '',
+      capability: capability,
+    ));
+    return {'ok': r.ok, 'result': r.result};
+  }
+
+  /// List the models of ONE provider. [providerId] is required (the agent
+  /// rejects a global list, which would duplicate ids across providers).
+  Future<List<ModelInfo>> models({required String providerId}) async {
+    if (providerId.isEmpty) return const [];
+    final r = await _agent
+        .listModels(sdk.ListModelsRequest(providerId: providerId));
+    return r.models
+        .map((m) => ModelInfo(
+              id: m.id,
+              name: m.name,
+              providerId: providerId,
+              contextLimit: m.contextLimit.toInt(),
+              variants: m.variants
+                  .map((v) => ModelVariantInfo(
+                      id: v.id, name: v.name, description: v.description))
+                  .toList(),
+            ))
+        .toList();
+  }
+
+  Future<List<Preset>> presets({String? locale}) async {
+    final r = await _agent
+        .listPresets(sdk.ListPresetsRequest(locale: locale ?? ''));
+    return r.presets.map((p) => Preset(
+          id: p.id,
+          systemPrompt: p.systemPrompt,
+          tools: p.tools,
+          maxTurns: p.maxTurns,
+          isSystem: p.isSystem,
+        )).toList();
+  }
+
+  Future<void> savePreset(Preset p) =>
+      _agent.upsertPreset(sdk.UpsertPresetRequest(
+          preset: sdk.Preset(
+        id: p.id,
+        systemPrompt: p.systemPrompt,
+        tools: p.tools,
+        maxTurns: p.maxTurns,
+      )));
+
+  Future<void> deletePreset(String id) =>
+      _agent.deletePreset(sdk.DeletePresetRequest(id: id));
+
+  Future<List<ToolInfo>> tools({String? locale}) async {
+    final r = await _agent.listTools(
+        sdk.ListToolsRequest(locale: locale ?? ''));
+    return r.tools.map((t) => ToolInfo(
+          name: t.name,
+          description: t.description,
+          category: t.category,
+          parameters: StructUtils.toJson(t.parameters),
+          configFields: t.configFields.map((c) => ToolConfigField(
+                key: c.name,
+                label: c.description.isEmpty ? c.name : c.description,
+                type: c.type,
+                placeholder: '',
+              )).toList(),
+          config: t.configFields.map((c) => ToolConfig(
+                name: c.name,
+                type: c.type,
+                kind: c.kind,
+                capability: c.capability,
+                enumValues: c.enumValues.toList(),
+                defaultValue: c.hasDefault_6()
+                    ? StructUtils.valueToJson(c.default_6)
+                    : null,
+                description: c.description,
+                scope: c.scope,
+              )).toList(),
+          requiredConfig: t.requiredConfig.toList(),
+        )).toList();
+  }
+
+  Future<void> setConfigKey(String key, String value) =>
+      _agent.setConfig(sdk.SetConfigRequest(key: key, value: value));
+
+  /// Read one agent config value for this tenant ('' when unset).
+  Future<String> config(String key) async {
+    final r = await _agent.getConfig(sdk.GetConfigRequest(key: key));
+    return r.value;
+  }
+
+  Future<Session> sessionLocale(String id, String locale) =>
+      settings(id, {'locale': locale});
+
+  Future<Map<String, dynamic>> toolConfig() async {
+    final r = await _agent.getToolConfig(sdk.GetToolConfigRequest());
+    return r.config.values
+        .map((k, v) => MapEntry(k, StructUtils.valueToJson(v)));
+  }
+}
+
+// ---- pb -> model mappers (agent native) ----
+
+Session sessionFromPb(sdk.Session s) => Session(
+      id: s.name,
+      org: s.org,
+      repo: s.repo,
+      branch: s.branch,
+      model: s.model,
+      variant: s.variant,
+      preset: s.preset,
+      tipId: s.tipId.isEmpty ? null : s.tipId,
+      maxTurns: s.maxTurns == 0 ? null : s.maxTurns,
+      systemPrompt: s.systemPrompt.isEmpty ? null : s.systemPrompt,
+      locale: s.locale.isEmpty ? null : s.locale,
+      inputTokens: s.inputTokens,
+      outputTokens: s.outputTokens,
+      totalTokens: s.totalTokens,
+      lastInputTokens: s.lastInputTokens,
+      lastOutputTokens: s.lastOutputTokens,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+      unreadCount: s.unreadCount,
+      lastMessageAt: s.lastMessageAt,
+      lastMessagePreview: s.lastMessagePreview,
+      messageSeq: s.messageSeq,
+      group: s.group,
+    );
+
+Session _sessionFromSessionResults(sdk.Session? s) =>
+    s == null ? Session(id: '') : sessionFromPb(s);
+
+Message messageFromPb(sdk.Message m) {
+  // Pair each tool call with its result (tool_use_id) so history renders one
+  // tool card (with output) per call, matching the live stream shape.
+  final decoded = m.parts.map((p) => (p, _decodeJson(p.data))).toList();
+  final results = <String, Map<String, dynamic>>{};
+  for (final (p, d) in decoded) {
+    if (p.type == 'tool_result') {
+      final id = (d['tool_use_id'] as String?) ?? '';
+      if (id.isNotEmpty) results[id] = d;
+    }
+  }
+  final parts = <MessagePart>[];
+  for (final (p, d) in decoded) {
+    switch (p.type) {
+      case 'text':
+        parts.add(MessagePart(
+          id: p.id,
+          type: 'text',
+          text: (d['text'] as String?) ?? '',
+        ));
+      case 'reasoning':
+        parts.add(MessagePart(
+          id: p.id,
+          type: 'reasoning',
+          text: (d['text'] as String?) ?? '',
+        ));
+      case 'summary':
+      case 'compaction':
+        parts.add(MessagePart(
+          id: p.id,
+          type: 'compaction',
+          text: (d['summary'] as String?) ?? '',
+        ));
+      case 'file':
+        parts.add(MessagePart(
+          id: p.id,
+          type: 'file',
+          code: (d['code'] as String?) ?? '',
+          name: (d['name'] as String?) ?? '',
+          mime: d['mime'] as String?,
+          size: (d['size'] as num?)?.toInt(),
+        ));
+      case 'tool':
+        final callId = (d['id'] as String?) ?? p.messageId;
+        final res = results[callId];
+        final content = res?['content'];
+        parts.add(MessagePart(
+          id: p.id,
+          type: 'tool',
+          tool: (d['name'] as String?) ?? '',
+          toolCallId: callId,
+          state: ToolState(
+            status: res != null ? 'complete' : 'running',
+            title: (d['name'] as String?) ?? '',
+            input: (d['input'] as Map?)?.cast<String, dynamic>(),
+            output: content is String ? content : null,
+            data: (res?['metadata'] as Map?)?.cast<String, dynamic>(),
+          ),
+        ));
+      case 'tool_result':
+        // Merged into its tool part above; render standalone only when the
+        // call part is missing (defensive).
+        final id = (d['tool_use_id'] as String?) ?? p.messageId;
+        if (results[id] != null && m.parts.any((q) => q.type == 'tool')) {
+          break;
+        }
+        final content = d['content'];
+        parts.add(MessagePart(
+          id: p.id,
+          type: 'tool',
+          tool: '',
+          toolCallId: id,
+          state: ToolState(
+            status: 'complete',
+            output: content is String ? content : null,
+          ),
+        ));
+    }
+  }
+  return Message(
+    id: m.id,
+    role: m.role,
+    createdAt: m.createdAt.isEmpty ? null : m.createdAt,
+    prevId: m.prevId,
+    parts: parts,
+  );
+}
+
+Map<String, dynamic> _decodeJson(String data) {
+  if (data.isEmpty) return const {};
+  try {
+    final v = jsonDecode(data);
+    return v is Map<String, dynamic> ? v : const {};
+  } catch (_) {
+    return const {};
+  }
+}
+
+class StructUtils {
+  static Map<String, dynamic> toJson(wkt.Struct? st) {
+    if (st == null) return {};
+    return st.fields.map((k, v) => MapEntry(k, valueToJson(v)));
+  }
+
+  static dynamic valueToJson(wkt.Value v) {
+    switch (v.whichKind()) {
+      case wkt.Value_Kind.stringValue:
+        return v.stringValue;
+      case wkt.Value_Kind.numberValue:
+        return v.numberValue;
+      case wkt.Value_Kind.boolValue:
+        return v.boolValue;
+      case wkt.Value_Kind.structValue:
+        return toJson(v.structValue);
+      case wkt.Value_Kind.listValue:
+        return v.listValue.values.map(valueToJson).toList();
+      case wkt.Value_Kind.nullValue:
+      case wkt.Value_Kind.notSet:
+        return null;
+    }
+  }
+}

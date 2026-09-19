@@ -1,0 +1,310 @@
+{
+  "@@locale": "en",
+  "@@context": "ZergX",
+  "appTitle": "Easy Agent",
+  "gatewayUrl": "Gateway URL",
+  "tokenLabel": "Token",
+  "connect": "Connect",
+  "connecting": "Connecting...",
+  "search": "Search",
+  "searchHint": "Search session name",
+  "recent": "Recent",
+  "me": "me",
+  "tabChat": "Chat",
+  "tabConfig": "Config",
+  "loadError": "Load failed: {arg1}",
+  "@loadError": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "markRead": "Mark as read",
+  "typeMessage": "Type a message...",
+  "chatTitle": "Chat",
+  "thinkLabel": "Thinking",
+  "compactedLabel": "History compacted · view summary",
+  "copied": "Copied",
+  "copy": "Copy",
+  "error": "Error",
+  "undo": "Undo",
+  "retry": "Retry",
+  "editMessage": "Edit message",
+  "undoTitle": "Undo this message?",
+  "undoBody": "This deletes the message and everything after it.",
+  "retryTitle": "Resend this message?",
+  "retryBody": "This withdraws the message and everything after it, then resends the original text.",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "apply": "Apply",
+  "delete": "Delete",
+  "loading": "Loading...",
+  "loadEarlier": "Load earlier",
+  "thinking": "thinking...",
+  "running": "running...",
+  "sendFailed": "Send failed: {arg1}",
+  "@sendFailed": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "send": "Send",
+  "attach": "Attach file",
+  "dropToAttach": "Drop to add as attachment",
+  "followSystem": "Follow system",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "folderNotAllowed": "Folders can't be attached — drop individual files",
+  "image": "image",
+  "takePhoto": "Take photo",
+  "chooseImage": "Choose from gallery",
+  "chooseFile": "Choose file",
+  "uploadFailedRetry": "{arg1} attachment(s) failed to upload — retry or remove them before sending",
+  "@uploadFailedRetry": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "compactHistory": "Compact history",
+  "mailbox": "Mailbox",
+  "container": "Container",
+  "deleteSession": "Delete session",
+  "historyCompacted": "History compacted",
+  "nothingToCompact": "Nothing to compact — history is short",
+  "back": "Back",
+  "refresh": "Refresh",
+  "taskDone": "Done",
+  "settingsTitle": "Session Settings",
+  "modelLabel": "Model",
+  "variantLabel": "Reasoning variant",
+  "variantNone": "Default (no variant)",
+  "presetLabel": "Preset",
+  "deleteSessionTitle": "Delete session",
+  "deleteSessionBody": "Delete session \"{arg1}\"?",
+  "@deleteSessionBody": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSessionsTitle": "Delete sessions",
+  "deleteSessionsBody": "Delete {arg1} selected sessions? This cannot be undone.",
+  "@deleteSessionsBody": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "selectSessions": "Select",
+  "selectAll": "Select all",
+  "selectedCount": "{arg1} selected",
+  "@selectedCount": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "addModel": "Add model",
+  "holdToTalk": "Hold to talk",
+  "releaseToSend": "Release to send",
+  "abort": "Abort",
+  "edit": "Edit",
+  "voiceMode": "Voice",
+  "keyboardMode": "Keyboard",
+  "sessionInfo": "Session info",
+  "voicePermission": "Microphone permission denied",
+  "voiceTooShort": "Recording too short",
+  "uploading": "Uploading…",
+  "uploadFailed": "Upload failed",
+  "capText": "text",
+  "capImage": "image",
+  "capVideo": "video",
+  "capSpeech": "speech",
+  "capTranscription": "ASR",
+  "capEmbedding": "embedding",
+  "capReranking": "rerank",
+  "capRealtime": "realtime",
+  "fork": "Fork",
+  "failed": "Failed: {arg1}",
+  "@failed": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "settings": "Settings",
+  "appearance": "Appearance",
+  "darkMode": "Dark mode",
+  "llm": "LLM",
+  "llmProviders": "Providers",
+  "providers": "Providers",
+  "presets": "Presets",
+  "workspace": "Workspace",
+  "tools": "Tools",
+  "language": "Language",
+  "switchBackend": "Switch user",
+  "backendsTitle": "Users",
+  "noSavedBackends": "No saved users yet.",
+  "addBackend": "Add new user",
+  "addBackendHint": "Sign in with a different URL and token",
+  "deleteBackend": "Remove user",
+  "backendSection": "Backend",
+  "providerTemplate": "Template (models.dev)",
+  "providerTemplateHint": "Pick a provider to prefill",
+  "searchModels": "Search models...",
+  "noProviders": "No providers. Add one to get started.",
+  "addProvider": "Add Provider",
+  "modelsCount": "{arg1} models",
+  "@modelsCount": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "providerId": "Provider ID",
+  "providerIdReq": "Provider ID (required)",
+  "apiType": "API Type",
+  "apiTypeOpenai": "OpenAI",
+  "apiTypeAnthropic": "Anthropic",
+  "apiTypeGemini": "Gemini",
+  "baseUrl": "Base URL",
+  "apiKey": "API Key",
+  "test": "Test",
+  "testing": "Testing...",
+  "register": "Register",
+  "registering": "Registering...",
+  "saved": "Saved",
+  "noConfig": "no config",
+  "configured": "configured",
+  "needsConfig": "needs config",
+  "newPreset": "New preset",
+  "presetId": "Preset id...",
+  "create": "Create",
+  "noPresets": "No presets.",
+  "deletePreset": "Delete preset",
+  "deletePresetBody": "Delete preset {arg1}?",
+  "@deletePresetBody": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "presetSummary": "{arg1} turns · {arg2} tools",
+  "@presetSummary": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      },
+      "arg2": {
+        "type": "String"
+      }
+    }
+  },
+  "systemPrompt": "System Prompt",
+  "maxTurns": "Max turns",
+  "terminal": "Terminal",
+  "close": "Close",
+  "noSession": "No session",
+  "history": "History",
+  "none": "None",
+  "download": "Download",
+  "noMessages": "No messages",
+  "consumed": "consumed",
+  "pending": "Pending",
+  "savedToDownloads": "Saved to Downloads: {arg1}",
+  "@savedToDownloads": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "timeJustNow": "just now",
+  "timeMinAgo": "{arg1} min ago",
+  "@timeMinAgo": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "timeHour": "{arg1} h ago",
+  "@timeHour": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "timeDay": "{arg1} d ago",
+  "@timeDay": {
+    "placeholders": {
+      "arg1": {
+        "type": "String"
+      }
+    }
+  },
+  "baseUrlReq": "Base URL (required)",
+  "apiKeyReq": "API Key (required)",
+  "save": "Save",
+  "noTools": "No tools",
+  "@agentLocaleApplied": {
+    "placeholders": {
+      "l": {
+        "type": "String"
+      }
+    }
+  },
+  "agentLocale": "Agent language",
+  "agentLocaleFollow": "Follow (UI language)",
+  "agentLocaleApplied": "Agent language set to {l}",
+  "toolParams": "Parameters",
+  "showMore": "Show",
+  "showLess": "Collapse",
+  "systemPresetBadge": "System",
+  "readOnlyPreset": "System preset: read-only",
+  "sysPromptByPreset": "System prompt is determined by the selected preset.",
+  "requiredConfig": "required config",
+  "selectProviderFirst": "Select a provider first",
+  "apiTypeOpenaiCompat": "OpenAI Compatible",
+  "modelsLabel": "Models",
+  "modelIdLabel": "model id…",
+  "contextLengthLabel": "context",
+  "contextLengthRequired": "Context length is required (positive number).",
+  "add": "Add",
+  "turnsByPreset": "Max turns is set by the selected preset.",
+  "testModelOk": "Model OK: {arg1}",
+  "connected": "Connected",
+  "connectionError": "Connection error: {arg1}",
+  "toolInputParams": "Input",
+  "content": "Content",
+  "metadata": "Metadata",
+  "newSession": "New session",
+  "noSessions": "No sessions",
+  "apiTypeGateway": "Vercel AI Gateway",
+  "apiTypeDeepseek": "DeepSeek",
+  "apiTypeCohere": "Cohere",
+  "capabilityLabel": "Modality",
+  "nonTextModelHint": "Non-text models are used by tools; no context window.",
+  "contextOptional": "optional — empty marks a multimodal model",
+  "modelNameLabel": "display name…",
+  "authExpiredTitle": "Sign-in required",
+  "authExpiredBody": "The server rejected the request: the token is missing, invalid, or revoked. Update the connection token and try again.",
+  "signInAgain": "Sign in again",
+  "defaultModel": "Default model",
+  "defaultPreset": "Default preset",
+  "sessionGroupLabel": "Group",
+  "subsessionBadge": "Subsession",
+  "subsessionCount": "{count} subsessions"
+}
