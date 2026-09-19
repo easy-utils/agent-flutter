@@ -16,7 +16,7 @@ import '../icons.dart';
 /// the exact same card: the header glyph + tint are fixed (`tools` / primary),
 /// so nothing about the card varies by tool family. The only per-tool text is
 /// the tool name / title. A tool result that carries file refs in its `data`
-/// (images / videos / audio) additionally renders those as media cards.
+/// (`files`) additionally renders those as media cards.
 ///
 /// The standalone agent exposes no change-diff / build-task surfaces, so the
 /// change id and diff are rendered as plain collapsible text (no navigation).
@@ -38,9 +38,9 @@ class ToolPartView extends StatefulWidget {
 class _ToolPartViewState extends State<ToolPartView> {
   AgentBindApi? get _api => widget.api;
 
-  /// Fixed media fields in a tool result's `data`: `images`/`videos`/`audio`
-  /// (each `{code, mime, ...}`) render as media cards. This is the stable
-  /// contract the generation tools emit.
+  /// Produced-file refs in a tool result's `data.files` (each
+  /// `{code, mime, name, bytes}`) render as media/file cards. This is the
+  /// single stable contract every producing tool emits.
   List<MediaRef> _mediaRefs(ChatPart part) {
     final data = part.state?.data;
     if (data == null) return const [];
@@ -58,13 +58,11 @@ class _ToolPartViewState extends State<ToolPartView> {
       }
     }
 
-    for (final key in const ['images', 'videos', 'audio']) {
-      final v = data[key];
-      if (v is List) {
-        for (final e in v) collect(e);
-      } else {
-        collect(v);
-      }
+    final v = data['files'];
+    if (v is List) {
+      for (final e in v) collect(e);
+    } else {
+      collect(v);
     }
     return out;
   }
@@ -211,9 +209,9 @@ class _ToolPartViewState extends State<ToolPartView> {
                             fontStyle: FontStyle.italic))
                   else if ((state?.output ?? '').isNotEmpty)
                     _MonoText(state!.output!),
-                  // Fixed media fields from the tool result `data` (e.g.
-                  // images / videos / audio emitted by the generation tools)
-                  // render as first-class media, not text.
+                  // Produced-file refs from the tool result `data.files`
+                  // (emitted by the generation tools) render as first-class
+                  // media, not text.
                   for (final ref in _mediaRefs(part))
                     Padding(
                       padding: const EdgeInsets.only(top: AppSpacing.xs),

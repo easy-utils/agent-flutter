@@ -97,9 +97,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancel => 'Cancel';
 
   @override
-  String get confirm => 'Confirm';
-
-  @override
   String get apply => 'Apply';
 
   @override
@@ -250,9 +247,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keyboardMode => 'Keyboard';
-
-  @override
-  String get sessionInfo => 'Session info';
 
   @override
   String get voicePermission => 'Microphone permission denied';
@@ -574,9 +568,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get connected => 'Connected';
-
-  @override
   String connectionError(Object arg1) {
     return 'Connection error: $arg1';
   }
@@ -611,9 +602,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get nonTextModelHint =>
       'Non-text models are used by tools; no context window.';
-
-  @override
-  String get contextOptional => 'optional — empty marks a multimodal model';
 
   @override
   String get modelNameLabel => 'display name…';

@@ -182,12 +182,13 @@ class AgentBindApi {
     final r = await _agent.ingestFile(sdk.IngestFileRequest(
       data: bytes,
       name: src.name,
-      mime: src.mimeType,
     ));
     return UploadedFile(
       code: r.code,
       name: src.name,
-      mime: src.mimeType,
+      // The agent DERIVES the content type from the bytes; adopt its answer
+      // (the pre-upload `src.mimeType` is only a local preview guess).
+      mime: r.mime,
       size: bytes.length,
       deduped: false,
     );
@@ -198,9 +199,28 @@ class AgentBindApi {
     return r.data;
   }
 
-  Future<({String? contentType, int length})> fileHead(String code) async {
+  Future<
+      ({
+        String? contentType,
+        int length,
+        int? width,
+        int? height,
+        int? durationMs,
+        String? thumbCode,
+        String? thumbhash,
+      })> fileHead(String code) async {
     final r = await _agent.getFileMeta(sdk.GetFileMetaRequest(code: code));
-    return (contentType: r.mime, length: r.size);
+    // The optional media facts are populated (server-side, best-effort) only
+    // for supported image/video/audio files; absent otherwise.
+    return (
+      contentType: r.mime,
+      length: r.size,
+      width: r.hasWidth() ? r.width : null,
+      height: r.hasHeight() ? r.height : null,
+      durationMs: r.hasDurationMs() ? r.durationMs.toInt() : null,
+      thumbCode: r.hasThumbCode() && r.thumbCode.isNotEmpty ? r.thumbCode : null,
+      thumbhash: r.hasThumbhash() && r.thumbhash.isNotEmpty ? r.thumbhash : null,
+    );
   }
 
   Future<(List<Message>, bool)> messages(String id,

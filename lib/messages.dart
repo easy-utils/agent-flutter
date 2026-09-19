@@ -514,6 +514,30 @@ class MessagesController extends ChangeNotifier {
         final tcId = (params['toolCallId'] ?? params['id']) as String?;
         if (tcId != null) _updateToolResult(tcId, null, errorMsg: 'denied');
         break;
+      case 'file':
+      case 'reasoning-file':
+        // A streamed media part the agent has already offloaded to the blob
+        // store; `code` is the file code. Render it as a file part (same path
+        // as a persisted file part) attached to the streaming bubble.
+        final code = params['code'] as String?;
+        if (code == null || code.isEmpty) break;
+        final sid = _ensureStreamingMsg(false);
+        final partId = 'f$code';
+        final idx = messages.indexWhere((m) => m.id == sid);
+        if (idx < 0 || messages[idx].parts.any((p) => p.id == partId)) break;
+        final parts = [...messages[idx].parts];
+        parts.add(ChatPart(
+          id: partId,
+          type: 'file',
+          code: code,
+          name: params['name'] as String?,
+          mime: params['mediaType'] as String? ?? params['mime'] as String?,
+        ));
+        final next = [...messages];
+        next[idx] = messages[idx].copyWith(parts: parts);
+        messages = next;
+        notifyListeners();
+        break;
       case 'turn-complete':
         _finishStreaming();
         break;

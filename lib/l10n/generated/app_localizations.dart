@@ -266,12 +266,6 @@ abstract class AppLocalizations {
   /// **'取消'**
   String get cancel;
 
-  /// No description provided for @confirm.
-  ///
-  /// In zh, this message translates to:
-  /// **'确定'**
-  String get confirm;
-
   /// No description provided for @apply.
   ///
   /// In zh, this message translates to:
@@ -553,12 +547,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'键盘'**
   String get keyboardMode;
-
-  /// No description provided for @sessionInfo.
-  ///
-  /// In zh, this message translates to:
-  /// **'会话信息'**
-  String get sessionInfo;
 
   /// No description provided for @voicePermission.
   ///
@@ -1154,12 +1142,6 @@ abstract class AppLocalizations {
   /// **'模型可用：{arg1}'**
   String testModelOk(Object arg1);
 
-  /// No description provided for @connected.
-  ///
-  /// In zh, this message translates to:
-  /// **'已连接'**
-  String get connected;
-
   /// No description provided for @connectionError.
   ///
   /// In zh, this message translates to:
@@ -1225,12 +1207,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'非文本模型供工具调用，无需上下文窗口。'**
   String get nonTextModelHint;
-
-  /// No description provided for @contextOptional.
-  ///
-  /// In zh, this message translates to:
-  /// **'可选 — 留空表示多模态模型'**
-  String get contextOptional;
 
   /// No description provided for @modelNameLabel.
   ///

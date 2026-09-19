@@ -96,9 +96,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cancel => '取消';
 
   @override
-  String get confirm => '确定';
-
-  @override
   String get apply => '应用';
 
   @override
@@ -248,9 +245,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get keyboardMode => '键盘';
-
-  @override
-  String get sessionInfo => '会话信息';
 
   @override
   String get voicePermission => '未获得麦克风权限';
@@ -570,9 +564,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get connected => '已连接';
-
-  @override
   String connectionError(Object arg1) {
     return '连接错误：$arg1';
   }
@@ -606,9 +597,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get nonTextModelHint => '非文本模型供工具调用，无需上下文窗口。';
-
-  @override
-  String get contextOptional => '可选 — 留空表示多模态模型';
 
   @override
   String get modelNameLabel => '显示名称…';
