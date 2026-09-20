@@ -111,6 +111,16 @@ class AgentBindApi {
     return r.sessions.map(sessionFromPb).toList();
   }
 
+  /// The caller's resolved identity (tenant id/name + role), from the token.
+  Future<Identity> identity() async {
+    final r = await _agent.getIdentity(sdk.GetIdentityRequest());
+    return Identity(
+      tenant: r.tenant,
+      tenantName: r.tenantName,
+      role: r.role,
+    );
+  }
+
   Future<Session> createSession(Map<String, dynamic> params) async {
     // Only forward fields the caller actually set: an empty string would
     // otherwise be written verbatim (and the agent now treats empty
@@ -257,22 +267,18 @@ class AgentBindApi {
   }
 
   Future<Session> settings(String id, Map<String, dynamic> settings) async {
-    // max_turns is optional: only set it when explicitly provided (>0),
-    // otherwise the update omits it (inherit from preset/default).
-    final maxTurns = settings['max_turns'] as int?;
+    // Only model / preset / locale / variant are client-editable (proto v0.18
+    // dropped max_turns/system_prompt/group from UpdateSettingsRequest; those
+    // are governed by the preset). Only forward non-empty model/preset: empty
+    // means "leave unchanged" (the agent also rejects blank values on the
+    // update path). locale/variant use the sentinel '' to clear an override.
     final req = sdk.UpdateSettingsRequest(id: id);
-    // Only forward non-empty model/preset: empty means "leave unchanged" (the
-    // agent also rejects blank values on the update path). Other settings use
-    // the sentinel '' to clear where that is meaningful (locale, variant,
-    // system_prompt).
     final model = (settings['model'] as String?) ?? '';
     if (model.isNotEmpty) req.model = model;
     final preset = (settings['preset'] as String?) ?? '';
     if (preset.isNotEmpty) req.preset = preset;
-    req.systemPrompt = (settings['system_prompt'] as String?) ?? '';
     req.locale = (settings['locale'] as String?) ?? '';
     req.variant = (settings['variant'] as String?) ?? '';
-    if (maxTurns != null && maxTurns > 0) req.maxTurns = maxTurns;
     final r = await _agent.updateSettings(req);
     return _sessionFromSessionResults(r.session);
   }

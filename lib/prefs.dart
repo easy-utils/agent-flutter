@@ -34,23 +34,47 @@ Map<String, int> readSeqs = {};
 /// otherwise an explicit 'zh'/'en'.
 String agentLocaleValue = 'follow';
 
+/// Fixed default gateway the connection form points at (PREFILL only — no token
+/// is baked in, so an install always starts at the setup / backends flow). The
+/// webui is served same-origin so it never asks for a URL, but the standalone
+/// apps need one and this is the canonical host. Overridable at build time with
+/// `--dart-define=AGENT_BASE_URL=...`.
+const String defaultGatewayUrl = 'https://agent.agent.10.199.64.20.nip.io';
+
 /// A saved backend (gateway) the app can switch between.
 class BackendCfg {
   final String name;
   final String baseUrl;
   final String token;
+
+  /// Human username (tenant name) resolved from the token via
+  /// AgentService.GetIdentity at connect/switch time. Empty for legacy entries.
+  final String username;
   const BackendCfg({
     required this.name,
     required this.baseUrl,
     required this.token,
+    this.username = '',
   });
 
-  Map<String, dynamic> toJson() =>
-      {'name': name, 'baseUrl': baseUrl, 'token': token};
+  BackendCfg copyWith({String? name, String? username}) => BackendCfg(
+        name: name ?? this.name,
+        baseUrl: baseUrl,
+        token: token,
+        username: username ?? this.username,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'baseUrl': baseUrl,
+        'token': token,
+        'username': username,
+      };
   factory BackendCfg.fromJson(Map<String, dynamic> j) => BackendCfg(
         name: j['name'] as String? ?? '',
         baseUrl: j['baseUrl'] as String? ?? '',
         token: j['token'] as String? ?? '',
+        username: j['username'] as String? ?? '',
       );
 
   /// Human label derived from the host when no explicit name exists.

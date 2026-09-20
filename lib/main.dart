@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -117,6 +119,29 @@ class _EasyLabAppState extends State<EasyLabApp> with WidgetsBindingObserver {
         _store = null;
       });
     }
+    // Refresh the cached username (older entries may predate GetIdentity, or
+    // the tenant name may have changed server-side). Best-effort.
+    unawaited(_cacheIdentity(b.baseUrl, b.token));
+  }
+
+  /// Resolve the token's username (GetIdentity) and cache it on the saved
+  /// backend entry, so the switch-user list shows a human name. Best-effort:
+  /// never block sign-in / switching on it, and never throw.
+  Future<void> _cacheIdentity(String base, String token) async {
+    try {
+      final api = await AgentBindApi.create(baseUrl: base, token: token);
+      final id = await api.identity();
+      final username = id.displayName;
+      if (username.isEmpty) return;
+      await Prefs.upsertBackend(BackendCfg(
+        name: username,
+        baseUrl: base,
+        token: token,
+        username: username,
+      ));
+    } catch (_) {
+      // identity optional
+    }
   }
 
   /// Backend manager: a dedicated page to switch / delete saved backends, or
@@ -185,6 +210,8 @@ class _EasyLabAppState extends State<EasyLabApp> with WidgetsBindingObserver {
             _token = token;
             _store = null;
           });
+          // Resolve + cache the human username for the saved entry.
+          unawaited(_cacheIdentity(base, token));
         },
       );
     }
@@ -333,8 +360,10 @@ class _SetupScreen extends StatefulWidget {
   State<_SetupScreen> createState() => _SetupScreenState();
 }
 class _SetupScreenState extends State<_SetupScreen> {
-  late final TextEditingController _base =
-      TextEditingController(text: widget.initialBaseUrl);
+  late final TextEditingController _base = TextEditingController(
+      text: widget.initialBaseUrl.isNotEmpty
+          ? widget.initialBaseUrl
+          : defaultGatewayUrl);
   late final TextEditingController _token = TextEditingController();
 
   bool _busy = false;
@@ -488,7 +517,11 @@ class _BackendsPageState extends State<_BackendsPage> {
                       ? colors.primary
                       : colors.mutedForeground,
                 ),
-                title: Text(b.name.isNotEmpty ? b.name : b.baseUrl),
+                // Prefer the resolved username (GetIdentity); fall back to the
+                // stored name / host for legacy entries.
+                title: Text(b.username.isNotEmpty
+                    ? b.username
+                    : (b.name.isNotEmpty ? b.name : b.baseUrl)),
                 subtitle: Text(b.baseUrl,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

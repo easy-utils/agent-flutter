@@ -1484,3 +1484,18 @@ class Release {
         .toList(),
   );
 }
+
+/// The caller's resolved identity (from its bearer token), via
+/// AgentService.GetIdentity. Used to show a human username instead of the
+/// (fixed, same-origin) URL. A tenant token resolves its own identity; an
+/// admin token resolves role='admin' with empty tenant fields.
+class Identity {
+  final String tenant;
+  final String tenantName;
+  final String role;
+  const Identity({this.tenant = '', this.tenantName = '', this.role = ''});
+
+  /// Display name: the human tenant name, falling back to the id.
+  String get displayName => tenantName.isNotEmpty ? tenantName : tenant;
+  bool get isAdmin => role == 'admin';
+}
