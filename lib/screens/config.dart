@@ -245,6 +245,23 @@ class _ConfigScreenState extends State<ConfigScreen> {
     );
     if (picked != null && picked != I18n.pref) {
       await I18n.setPref(picked);
+      // A session whose locale is 'follow' inherits the tenant config locale,
+      // so keep that in sync with the effective agent locale whenever the UI
+      // language changes (otherwise the agent keeps answering in the stale one).
+      await _syncAgentLocale();
+    }
+  }
+
+  /// Push the effective agent locale (UI language when the pref is 'follow')
+  /// to the tenant config KV, so a session's 'follow' actually follows it.
+  Future<void> _syncAgentLocale() async {
+    try {
+      await store.api.setConfigKey(
+        'locale',
+        Prefs.effectiveAgentLocale(uiZh: I18n.isZh),
+      );
+    } catch (_) {
+      // best-effort
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import 'api.dart';
 import 'enums.dart';
+import 'i18n.dart';
 import 'models.dart';
 import 'navigation.dart';
 import 'prefs.dart';
@@ -15,6 +16,22 @@ class AppStore extends ChangeNotifier {
   AppStore(this.api, {this.local}) {
     _hydrateLocal();
     startSessionWatch();
+    _syncAgentLocale();
+  }
+
+  /// Keep the tenant config locale aligned with the effective agent locale
+  /// (the UI language when the pref is 'follow'), so a session that follows it
+  /// resolves correctly instead of inheriting a stale server default. Mirrors
+  /// the webui's boot-time syncAgentLocale. Best-effort.
+  Future<void> _syncAgentLocale() async {
+    try {
+      await api.setConfigKey(
+        'locale',
+        Prefs.effectiveAgentLocale(uiZh: I18n.isZh),
+      );
+    } catch (_) {
+      // best-effort
+    }
   }
 
   final AgentBindApi api;
