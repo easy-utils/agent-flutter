@@ -632,4 +632,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String subsessionCount(Object count) {
     return '$count subsessions';
   }
+
+  @override
+  String get mailboxPrompt => 'Message';
+
+  @override
+  String get mailboxFromSession => 'From session';
+
+  @override
+  String get mailboxFromSystem => 'From system';
+
+  @override
+  String get mailboxInterrupt => 'Interrupt';
+
+  @override
+  String get mailboxEvent => 'Event';
+
+  @override
+  String get deliver => 'Deliver to mailbox';
+
+  @override
+  String get sending => 'Sending…';
+
+  @override
+  String get noMoreMessages => 'No more messages';
+
+  @override
+  String get forked => 'Forked';
 }

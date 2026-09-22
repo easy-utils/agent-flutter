@@ -440,6 +440,35 @@ class MessagesController extends ChangeNotifier {
         final event = ev.event;
         final params = ev.params;
         switch (event) {
+      case 'message-added':
+        // The server AUTHORED this message's id and chain anchor. This is the
+        // ONLY place user bubbles are created (no client-optimistic row). A
+        // trigger appears here once the agent has drained the mailbox and
+        // written the chain row; `streaming:true` opens the assistant step's
+        // bubble, whose deltas then arrive under the same id.
+        final addedId = params['message_id'] as String? ?? '';
+        final prevId = params['prev_id'] as String? ?? '';
+        final role = params['role'] as String? ?? 'assistant';
+        final streaming = params['streaming'] == true;
+        final src = params['source'] as String? ?? '';
+        if (addedId.isEmpty) break;
+        if (streaming && role == 'assistant') {
+          // A new step begins: any PRIOR streaming bubble is done.
+          final prevStream = _streamingId;
+          if (prevStream != null && prevStream != addedId) {
+            messages = messages
+                .map((m) => (m.id == prevStream && m.status == 'streaming')
+                    ? m.copyWith(status: 'complete')
+                    : m)
+                .toList();
+          }
+          _streamingId = addedId;
+          _ensureStreamingMsgAt(addedId, prevId);
+        } else if (role == 'user') {
+          _upsertServerMessage(addedId, prevId, 'user', src);
+        }
+        notifyListeners();
+        break;
       case 'start-step':
       case 'text-start':
       case 'reasoning-start':
@@ -574,6 +603,60 @@ class MessagesController extends ChangeNotifier {
       default:
         break;
     }
+  }
+
+  /// Insert (or reuse) the server-authored streaming assistant bubble for the
+  /// id announced by `message-added{streaming:true}`. No id is minted locally.
+  void _ensureStreamingMsgAt(String id, String prevId) {
+    if (messages.any((m) => m.id == id)) {
+      _streamingId = id;
+      return;
+    }
+    messages = [
+      ...messages,
+      ChatMessage(
+          id: id,
+          role: 'assistant',
+          status: 'streaming',
+          parts: [],
+          prevId: prevId,
+          createdAt: DateTime.now().toIso8601String(),
+          isLocal: true,
+          seq: _allocSeq()),
+    ];
+  }
+
+  /// Render a persisted (non-streaming) row announced via `message-added`
+  /// using the server-authored id/position — the user prompt in particular.
+  void _upsertServerMessage(
+      String id, String prevId, String role, String source) {
+    final exists = messages.any((m) => m.id == id);
+    if (exists) {
+      // Upgrade an in-flight row (rare) to the authoritative identity.
+      messages = messages
+          .map((m) => m.id == id
+              ? m.copyWith(
+                  id: id,
+                  prevId: prevId,
+                  source: source,
+                  status: 'complete',
+                  isLocal: false)
+              : m)
+          .toList();
+      return;
+    }
+    messages = [
+      ...messages,
+      ChatMessage(
+          id: id,
+          role: role,
+          status: 'complete',
+          parts: const [],
+          prevId: prevId,
+          source: source,
+          createdAt: DateTime.now().toIso8601String(),
+          seq: _allocSeq()),
+    ];
   }
 
   String _ensureStreamingMsg(bool forceNew) {
@@ -795,51 +878,14 @@ class MessagesController extends ChangeNotifier {
     // The platform splices attachment codes into `[附件 …file:<code>…]`
     // references; the client only sends the codes, never the rendered text.
     final codes = attachments.map((a) => a.code).toList();
-    // Optimistic user message: file parts first (rendered as attachments),
-    // then the text. Mirrors how the backend persists them.
-    final userParts = <ChatPart>[
-      for (final a in attachments)
-        ChatPart(
-          id: 'f${a.code}',
-          type: 'file',
-          code: a.code,
-          name: a.name,
-          mime: a.mime,
-          size: a.size,
-        ),
-      if (trimmed.isNotEmpty)
-        ChatPart(
-          id: 'p${DateTime.now().microsecondsSinceEpoch}',
-          type: 'text',
-          text: trimmed),
-    ];
-    messages = [
-      ...messages.where((m) => m.status != 'streaming'),
-      ChatMessage(
-          id: 'u${DateTime.now().microsecondsSinceEpoch}',
-          role: 'user',
-          status: 'pending',
-          isLocal: true,
-          parts: userParts,
-          createdAt: DateTime.now().toIso8601String(),
-          seq: _allocSeq()),
-    ];
-    final _ = _ensureStreamingMsg(true);
+    // No client-optimistic user bubble: the server AUTHORS the message id and
+    // chain position and announces it via `message-added{role:user}` once the
+    // running turn drains the mailbox (see _handleEvent). We only show the
+    // composer spinner until the send RPC is accepted.
     notifyListeners();
     try {
-      final messageId =
-          await api.prompt(getSessionId(), trimmed, attachments: codes);
-      if (messageId.isNotEmpty) {
-        messages = messages.map((m) {
-          if (m.status == 'pending' && m.role == 'user' && m.isLocal) {
-            // Adopt the server id; it is now real history.
-            return m.copyWith(
-                id: messageId, status: 'complete', isLocal: false);
-          }
-          return m;
-        }).toList();
-        notifyListeners();
-      }
+      await api.prompt(getSessionId(), trimmed, attachments: codes);
+      // The send is durable at `accepted`; the bubble follows from the stream.
     } catch (e) {
       _addError(I18n.now.sendFailed('$e'));
       sending = false;

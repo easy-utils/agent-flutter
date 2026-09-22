@@ -375,18 +375,24 @@ class Message {
   /// Server chain pin (`prev_id`) of this message, or empty at the root.
   final String prevId;
 
+  /// ORIGIN of the message ('' for agent-authored rows): `user`,
+  /// `session:{name}`, `system:{name}`, or extension-defined.
+  final String source;
+
   Message({
     required this.id,
     required this.role,
     required this.parts,
     this.createdAt,
     this.prevId = '',
+    this.source = '',
   });
 
   factory Message.fromJson(Map<String, dynamic> j) => Message(
     id: j['id'] as String? ?? '',
     role: j['role'] as String? ?? '',
     prevId: j['prev_id'] as String? ?? '',
+    source: j['source'] as String? ?? '',
     parts: (j['parts'] as List? ?? [])
         .map((e) => MessagePart.fromJson(e as Map<String, dynamic>))
         .toList(),
@@ -553,6 +559,12 @@ class ChatMessage {
   /// persisted as server history and are dropped on every reconcile.
   final bool isLocal;
 
+  /// ORIGIN of the message ('' for agent-authored rows): `user`,
+  /// `session:{name}`, `system:{name}`, or extension-defined. A user message
+  /// carries the mailbox source it was delivered with; a `session:` origin is
+  /// rendered as INCOMING (left, sender avatar) even though role is `user`.
+  final String source;
+
   ChatMessage({
     required this.id,
     required this.role,
@@ -562,6 +574,7 @@ class ChatMessage {
     this.seq,
     this.prevId = '',
     this.isLocal = false,
+    this.source = '',
   });
 
   ChatMessage copyWith({
@@ -571,6 +584,7 @@ class ChatMessage {
     String? prevId,
     int? seq,
     bool? isLocal,
+    String? source,
   }) => ChatMessage(
     id: id ?? this.id,
     role: role,
@@ -580,6 +594,7 @@ class ChatMessage {
     seq: seq ?? this.seq,
     prevId: prevId ?? this.prevId,
     isLocal: isLocal ?? this.isLocal,
+    source: source ?? this.source,
   );
 }
 
@@ -587,12 +602,17 @@ class ChatMessage {
 
 class MailboxEntry {
   final String id;
-  final String msgType;
+  final String msgType; // trigger | interrupt | event
   final String payload;
   final String? effectiveAt;
   final String status;
   final String createdAt;
   final String? consumedAt;
+
+  /// ORIGIN of the message: `user`, `session:{name}`, `system:{name}`, or
+  /// extension-defined. Used to distinguish a human prompt from a session
+  /// hand-off or automation.
+  final String source;
   MailboxEntry({
     required this.id,
     required this.msgType,
@@ -601,6 +621,7 @@ class MailboxEntry {
     required this.createdAt,
     this.effectiveAt,
     this.consumedAt,
+    this.source = '',
   });
   factory MailboxEntry.fromJson(Map<String, dynamic> j) => MailboxEntry(
     id: j['id'] as String? ?? '',
@@ -610,7 +631,15 @@ class MailboxEntry {
     status: j['status'] as String? ?? '',
     createdAt: j['created_at'] as String? ?? '',
     consumedAt: j['consumed_at'] as String?,
+    source: j['source'] as String? ?? '',
   );
+}
+
+/// A page of mailbox entries (newest-first) plus whether older entries exist.
+class MailboxPage {
+  final List<MailboxEntry> entries;
+  final bool hasMore;
+  const MailboxPage({required this.entries, required this.hasMore});
 }
 
 class ChangeEntry {

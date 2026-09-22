@@ -312,17 +312,26 @@ class AgentBindApi {
     return ((st['status'] as String?) ?? 'idle', (st['parts'] as List?) ?? []);
   }
 
-  Future<List<MailboxEntry>> mailbox(String id) async {
-    final r = await _agent.mailbox(sdk.MailboxRequest(id: id));
-    return r.mailbox.map((m) => MailboxEntry(
-          id: m.id,
-          msgType: m.msgType,
-          payload: m.payload,
-          effectiveAt: m.effectiveAt.isEmpty ? null : m.effectiveAt,
-          status: m.status,
-          createdAt: m.createdAt,
-          consumedAt: m.consumedAt.isEmpty ? null : m.consumedAt,
-        )).toList();
+  /// One page of the mailbox (NEWEST-FIRST, paged backward). Pass the oldest
+  /// entry id you already hold as [before] to fetch the next older page.
+  Future<MailboxPage> mailbox(String id, {String before = '', int limit = 0}) async {
+    final r = await _agent.mailbox(
+        sdk.MailboxRequest(id: id, before: before, limit: limit));
+    return MailboxPage(
+      hasMore: r.hasMore,
+      entries: r.mailbox
+          .map((m) => MailboxEntry(
+                id: m.id,
+                msgType: m.msgType,
+                payload: m.payload,
+                effectiveAt: m.effectiveAt.isEmpty ? null : m.effectiveAt,
+                status: m.status,
+                createdAt: m.createdAt,
+                consumedAt: m.consumedAt.isEmpty ? null : m.consumedAt,
+                source: m.source,
+              ))
+          .toList(),
+    );
   }
 
   // ---- stream ----
@@ -651,6 +660,7 @@ Message messageFromPb(sdk.Message m) {
     role: m.role,
     createdAt: m.createdAt.isEmpty ? null : m.createdAt,
     prevId: m.prevId,
+    source: m.source,
     parts: parts,
   );
 }

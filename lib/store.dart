@@ -226,6 +226,18 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  /// Fork a session by id WITHOUT opening it (the session-row context menu):
+  /// the new branch appears in the list, the current view is unchanged.
+  Future<Session?> forkSessionFrom(String id, String branch) async {
+    try {
+      final s = await api.fork(id, branch);
+      await refreshSessions();
+      return s;
+    } catch (_) {
+      return null;
+    }
+  }
+
   void pickSession(String id) {
     activeSessionId = id;
     sessionOverlay = null;

@@ -374,7 +374,8 @@ class _SessionListPageState extends State<SessionListPage> {
     );
   }
 
-  /// Long-press bottom sheet: delete (and mark-read when unread).
+  /// Long-press bottom sheet: fork (without opening) + delete (and mark-read
+  /// when unread) — mirrors the webui session-row context menu.
   void _sessionActions(Session s) {
     showModalBottomSheet<void>(
       context: context,
@@ -383,6 +384,14 @@ class _SessionListPageState extends State<SessionListPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(AppIcons.fork),
+              title: Text(ctx.l10n.fork),
+              onTap: () {
+                Navigator.pop(ctx);
+                _forkSessionFlow(s);
+              },
+            ),
             if (store.isUnread(s))
               ListTile(
                 title: Text(ctx.l10n.markRead),
@@ -409,6 +418,20 @@ class _SessionListPageState extends State<SessionListPage> {
         ),
       ),
     );
+  }
+
+  /// Fork a session WITHOUT opening it: prompt for the branch name, then add
+  /// the new branch to the list (the current view is unchanged).
+  Future<void> _forkSessionFlow(Session s) async {
+    final name = await promptDialog(context, title: context.l10n.fork);
+    if (name == null || name.trim().isEmpty) return;
+    final created = await store.forkSessionFrom(s.id, name.trim());
+    if (!mounted) return;
+    if (created == null) {
+      showErrorToast(context, context.l10n.failed('fork'));
+    } else {
+      showToast(context, context.l10n.forked);
+    }
   }
 
   Future<void> _deleteSessionFlow(Session s) async {

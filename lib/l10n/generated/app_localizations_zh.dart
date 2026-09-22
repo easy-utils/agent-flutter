@@ -626,4 +626,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String subsessionCount(Object count) {
     return '$count 个子会话';
   }
+
+  @override
+  String get mailboxPrompt => '消息';
+
+  @override
+  String get mailboxFromSession => '来自会话';
+
+  @override
+  String get mailboxFromSystem => '来自系统';
+
+  @override
+  String get mailboxInterrupt => '中断';
+
+  @override
+  String get mailboxEvent => '事件';
+
+  @override
+  String get deliver => '发送到信箱';
+
+  @override
+  String get sending => '发送中…';
+
+  @override
+  String get noMoreMessages => '没有更多消息';
+
+  @override
+  String get forked => '已派生';
 }

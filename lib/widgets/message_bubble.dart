@@ -6,6 +6,7 @@ import '../api.dart';
 import '../i18n.dart';
 import '../models.dart';
 import '../theme/app_theme.dart';
+import 'chat_avatar.dart';
 import 'dialogs.dart';
 import 'media_attachment.dart';
 import 'tool_part.dart';
@@ -144,6 +145,16 @@ class MessageBubble extends StatelessWidget {
   final String org;
   final String repo;
   final String branch;
+
+  /// The OPEN session id, used to seed the left-side assistant avatar.
+  final String sessionId;
+
+  /// Open the session named by a `session:{name}` source (jump to it). Null
+  /// hides the jump affordance.
+  final void Function(String sessionId)? onOpenSession;
+
+  /// Whether a `session:{name}` source still resolves to a live session.
+  final bool Function(String sessionId)? sessionExists;
   const MessageBubble({
     super.key,
     required this.msg,
@@ -155,6 +166,9 @@ class MessageBubble extends StatelessWidget {
     this.org = '',
     this.repo = '',
     this.branch = '',
+    this.sessionId = '',
+    this.onOpenSession,
+    this.sessionExists,
   });
 
   AgentBindApi get _api => api;
@@ -259,14 +273,43 @@ class MessageBubble extends StatelessWidget {
     return (edited == null || edited.isEmpty) ? null : edited;
   }
 
+  /// Message ORIGIN (msg.source): '' (agent-authored / legacy user) | 'user'
+  /// (human prompt) | 'session:{name}' (another session) | 'system:{name}'.
+  String get _sourceKind => msg.source.startsWith('session:')
+      ? 'session'
+      : msg.source.startsWith('system:')
+          ? 'system'
+          : (msg.source.isEmpty || msg.source == 'user') ? 'user' : 'other';
+
+  /// The bare name after `session:` / `system:` ('' otherwise).
+  String get _sourceName => _sourceKind == 'session'
+      ? msg.source.substring('session:'.length)
+      : _sourceKind == 'system'
+          ? msg.source.substring('system:'.length)
+          : '';
+
   @override
   Widget build(BuildContext context) {
     final colors = colorsOf(context);
     final text = textOf(context);
-    final isUser = msg.role == 'user';
+    final isRoleUser = msg.role == 'user';
     final isError = msg.role == 'error';
-    final isSystem = msg.role == 'system' || msg.role == 'event';
+    final isRoleSystem = msg.role == 'system' || msg.role == 'event';
     final isStreaming = msg.status == 'streaming';
+    final isSending = msg.status == 'pending';
+    // A `session:{name}` message is INCOMING (left, sender avatar) even though
+    // its role is `user`; `system:{name}` renders as a centred notice. Only the
+    // reader's OWN prompt stays right-aligned, with NO avatar (left only).
+    final isSystem = isRoleSystem || _sourceKind == 'system';
+    final isUser = isRoleUser && _sourceKind != 'session';
+    final incoming = !isUser && !isSystem;
+    final canOpenSession = _sourceKind == 'session' &&
+        onOpenSession != null &&
+        (sessionExists == null || sessionExists!(_sourceName));
+    final avatarSeed = _sourceKind == 'session'
+        ? _sourceName
+        : (sessionId.isNotEmpty ? sessionId : 'assistant');
+    final showAvatar = incoming && !isError && !isSending;
 
     // Reasoning (thinking) always renders ABOVE the rest of the message: the
     // parts array is populated in event-arrival order, and the model may emit
@@ -338,7 +381,9 @@ class MessageBubble extends StatelessWidget {
                 ? colors.muted.withValues(alpha: 0.30)
                 : isUser
                     ? colors.primary.withValues(alpha: 0.12)
-                    : colors.card,
+                    : _sourceKind == 'session'
+                        ? const Color(0x1A0EA5E9)
+                        : colors.card,
         border: Border.all(
           color: isError
               ? colors.destructive.withValues(alpha: 0.4)
@@ -346,7 +391,9 @@ class MessageBubble extends StatelessWidget {
                   ? colors.mutedForeground.withValues(alpha: 0.25)
                   : isUser
                       ? colors.primary.withValues(alpha: 0.4)
-                      : colors.border.withValues(alpha: 0.5),
+                      : _sourceKind == 'session'
+                          ? const Color(0x660EA5E9)
+                          : colors.border.withValues(alpha: 0.5),
         ),
         borderRadius: AppRadius.rMd,
       ),
@@ -354,6 +401,18 @@ class MessageBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Source chip: "来自会话 · {name}" / "来自系统 · {name}". The
+            // session chip opens that session when it still exists.
+            if (_sourceKind == 'session' || _sourceKind == 'system')
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _SourceChip(
+                  kind: _sourceKind,
+                  name: _sourceName,
+                  canOpen: canOpenSession,
+                  onOpen: () => onOpenSession?.call(_sourceName),
+                ),
+              ),
             for (var i = 0; i < parts.length; i++) ...[
               if (i > 0) const SizedBox(height: AppSpacing.sm),
               parts[i],
@@ -370,16 +429,52 @@ class MessageBubble extends StatelessWidget {
                 ? CrossAxisAlignment.end
                 : CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onLongPress: () => _actions(context),
-            child: bubble,
+          // Avatars live ABOVE the bubble, flush to the left edge: the
+          // assistant reply and a session hand-off each show a 28px avatar on
+          // its own row above the bubble; the reader's OWN prompt has none.
+          if (showAvatar)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: canOpenSession
+                  ? GestureDetector(
+                      onTap: () => onOpenSession?.call(_sourceName),
+                      child: ChatAvatar(
+                          org: '', repo: '', branch: avatarSeed, radius: 14),
+                    )
+                  : ChatAvatar(
+                      org: '', repo: '', branch: avatarSeed, radius: 14),
+            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Sending row: the spinner sits to the LEFT of the user bubble
+              // while the backend has not yet confirmed the write.
+              if (isSending)
+                Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.sm),
+                  child: SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: colors.mutedForeground),
+                  ),
+                ),
+              Flexible(
+                child: GestureDetector(
+                  onLongPress: () => _actions(context),
+                  child: bubble,
+                ),
+              ),
+            ],
           ),
           // The actions row shows for EVERY non-streaming message — the
           // agent-ts /undo endpoint accepts any message in the session
           // chain, so tool-call messages are revertible too. Copy is only
           // offered when there is text to copy. System messages show neither
-          // (they are not part of the conversation chain).
-          if (!isStreaming && !isSystem)
+          // (they are not part of the conversation chain). Retry/edit/undo
+          // apply ONLY to the reader's OWN prompts (never a session hand-off).
+          if (!isStreaming && !isSystem && !isSending)
             _BubbleActions(
               isUser: isUser,
               showCopy: _hasText,
@@ -670,5 +765,51 @@ class _CollapseBlockState extends State<_CollapseBlock> {
         ),
       ),
     );
+  }
+}
+
+/// Provenance chip shown inside a bubble whose message came from another
+/// session (`session:{name}`) or automation (`system:{name}`).
+class _SourceChip extends StatelessWidget {
+  final String kind; // 'session' | 'system'
+  final String name;
+  final bool canOpen;
+  final VoidCallback onOpen;
+  const _SourceChip({
+    required this.kind,
+    required this.name,
+    required this.canOpen,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final text = textOf(context);
+    final isSession = kind == 'session';
+    final fg = isSession ? const Color(0xFF0284C7) : const Color(0xFF7C3AED);
+    final bg = isSession ? const Color(0x260EA5E9) : const Color(0x268B5CF6);
+    final label = isSession
+        ? context.l10n.mailboxFromSession
+        : context.l10n.mailboxFromSystem;
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isSession ? AppIcons.chat : AppIcons.bolt, size: 12, color: fg),
+          const SizedBox(width: 4),
+          Text(label,
+              style: text.micro.copyWith(
+                  color: fg, fontWeight: FontWeight.w600, fontSize: 10)),
+          if (name.isNotEmpty)
+            Text(' · $name',
+                style: text.micro.copyWith(
+                    color: fg.withValues(alpha: 0.8), fontSize: 10)),
+        ],
+      ),
+    );
+    if (!canOpen) return chip;
+    return GestureDetector(onTap: onOpen, child: chip);
   }
 }

@@ -1024,6 +1024,16 @@ class $LocalMessagesTable extends LocalMessages
     requiredDuringInsert: false,
     defaultValue: const Constant('[]'),
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1034,6 +1044,7 @@ class $LocalMessagesTable extends LocalMessages
     orderKey,
     status,
     partsJson,
+    source,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1100,6 +1111,12 @@ class $LocalMessagesTable extends LocalMessages
         partsJson.isAcceptableOrUnknown(data['parts_json']!, _partsJsonMeta),
       );
     }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
     return context;
   }
 
@@ -1141,6 +1158,10 @@ class $LocalMessagesTable extends LocalMessages
         DriftSqlType.string,
         data['${effectivePrefix}parts_json'],
       )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
     );
   }
 
@@ -1159,6 +1180,10 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
   final int orderKey;
   final String status;
   final String partsJson;
+
+  /// ORIGIN of the message ('' for agent-authored): user / session:{name} /
+  /// system:{name} / extension-defined. Drives the provenance rendering.
+  final String source;
   const LocalMessage({
     required this.id,
     required this.sessionId,
@@ -1168,6 +1193,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
     required this.orderKey,
     required this.status,
     required this.partsJson,
+    required this.source,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1180,6 +1206,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
     map['order_key'] = Variable<int>(orderKey);
     map['status'] = Variable<String>(status);
     map['parts_json'] = Variable<String>(partsJson);
+    map['source'] = Variable<String>(source);
     return map;
   }
 
@@ -1193,6 +1220,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
       orderKey: Value(orderKey),
       status: Value(status),
       partsJson: Value(partsJson),
+      source: Value(source),
     );
   }
 
@@ -1210,6 +1238,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
       orderKey: serializer.fromJson<int>(json['orderKey']),
       status: serializer.fromJson<String>(json['status']),
       partsJson: serializer.fromJson<String>(json['partsJson']),
+      source: serializer.fromJson<String>(json['source']),
     );
   }
   @override
@@ -1224,6 +1253,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
       'orderKey': serializer.toJson<int>(orderKey),
       'status': serializer.toJson<String>(status),
       'partsJson': serializer.toJson<String>(partsJson),
+      'source': serializer.toJson<String>(source),
     };
   }
 
@@ -1236,6 +1266,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
     int? orderKey,
     String? status,
     String? partsJson,
+    String? source,
   }) => LocalMessage(
     id: id ?? this.id,
     sessionId: sessionId ?? this.sessionId,
@@ -1245,6 +1276,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
     orderKey: orderKey ?? this.orderKey,
     status: status ?? this.status,
     partsJson: partsJson ?? this.partsJson,
+    source: source ?? this.source,
   );
   LocalMessage copyWithCompanion(LocalMessagesCompanion data) {
     return LocalMessage(
@@ -1256,6 +1288,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
       orderKey: data.orderKey.present ? data.orderKey.value : this.orderKey,
       status: data.status.present ? data.status.value : this.status,
       partsJson: data.partsJson.present ? data.partsJson.value : this.partsJson,
+      source: data.source.present ? data.source.value : this.source,
     );
   }
 
@@ -1269,7 +1302,8 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
           ..write('createdAt: $createdAt, ')
           ..write('orderKey: $orderKey, ')
           ..write('status: $status, ')
-          ..write('partsJson: $partsJson')
+          ..write('partsJson: $partsJson, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
@@ -1284,6 +1318,7 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
     orderKey,
     status,
     partsJson,
+    source,
   );
   @override
   bool operator ==(Object other) =>
@@ -1296,7 +1331,8 @@ class LocalMessage extends DataClass implements Insertable<LocalMessage> {
           other.createdAt == this.createdAt &&
           other.orderKey == this.orderKey &&
           other.status == this.status &&
-          other.partsJson == this.partsJson);
+          other.partsJson == this.partsJson &&
+          other.source == this.source);
 }
 
 class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
@@ -1308,6 +1344,7 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
   final Value<int> orderKey;
   final Value<String> status;
   final Value<String> partsJson;
+  final Value<String> source;
   final Value<int> rowid;
   const LocalMessagesCompanion({
     this.id = const Value.absent(),
@@ -1318,6 +1355,7 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
     this.orderKey = const Value.absent(),
     this.status = const Value.absent(),
     this.partsJson = const Value.absent(),
+    this.source = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalMessagesCompanion.insert({
@@ -1329,6 +1367,7 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
     required int orderKey,
     this.status = const Value.absent(),
     this.partsJson = const Value.absent(),
+    this.source = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        sessionId = Value(sessionId),
@@ -1343,6 +1382,7 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
     Expression<int>? orderKey,
     Expression<String>? status,
     Expression<String>? partsJson,
+    Expression<String>? source,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1354,6 +1394,7 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
       if (orderKey != null) 'order_key': orderKey,
       if (status != null) 'status': status,
       if (partsJson != null) 'parts_json': partsJson,
+      if (source != null) 'source': source,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1367,6 +1408,7 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
     Value<int>? orderKey,
     Value<String>? status,
     Value<String>? partsJson,
+    Value<String>? source,
     Value<int>? rowid,
   }) {
     return LocalMessagesCompanion(
@@ -1378,6 +1420,7 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
       orderKey: orderKey ?? this.orderKey,
       status: status ?? this.status,
       partsJson: partsJson ?? this.partsJson,
+      source: source ?? this.source,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1409,6 +1452,9 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
     if (partsJson.present) {
       map['parts_json'] = Variable<String>(partsJson.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1426,6 +1472,7 @@ class LocalMessagesCompanion extends UpdateCompanion<LocalMessage> {
           ..write('orderKey: $orderKey, ')
           ..write('status: $status, ')
           ..write('partsJson: $partsJson, ')
+          ..write('source: $source, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2807,6 +2854,7 @@ typedef $$LocalMessagesTableCreateCompanionBuilder =
       required int orderKey,
       Value<String> status,
       Value<String> partsJson,
+      Value<String> source,
       Value<int> rowid,
     });
 typedef $$LocalMessagesTableUpdateCompanionBuilder =
@@ -2819,6 +2867,7 @@ typedef $$LocalMessagesTableUpdateCompanionBuilder =
       Value<int> orderKey,
       Value<String> status,
       Value<String> partsJson,
+      Value<String> source,
       Value<int> rowid,
     });
 
@@ -2892,6 +2941,11 @@ class $$LocalMessagesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$LocalSessionsTableFilterComposer get sessionId {
     final $$LocalSessionsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -2960,6 +3014,11 @@ class $$LocalMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$LocalSessionsTableOrderingComposer get sessionId {
     final $$LocalSessionsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3013,6 +3072,9 @@ class $$LocalMessagesTableAnnotationComposer
 
   GeneratedColumn<String> get partsJson =>
       $composableBuilder(column: $table.partsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
 
   $$LocalSessionsTableAnnotationComposer get sessionId {
     final $$LocalSessionsTableAnnotationComposer composer = $composerBuilder(
@@ -3074,6 +3136,7 @@ class $$LocalMessagesTableTableManager
                 Value<int> orderKey = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String> partsJson = const Value.absent(),
+                Value<String> source = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalMessagesCompanion(
                 id: id,
@@ -3084,6 +3147,7 @@ class $$LocalMessagesTableTableManager
                 orderKey: orderKey,
                 status: status,
                 partsJson: partsJson,
+                source: source,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3096,6 +3160,7 @@ class $$LocalMessagesTableTableManager
                 required int orderKey,
                 Value<String> status = const Value.absent(),
                 Value<String> partsJson = const Value.absent(),
+                Value<String> source = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LocalMessagesCompanion.insert(
                 id: id,
@@ -3106,6 +3171,7 @@ class $$LocalMessagesTableTableManager
                 orderKey: orderKey,
                 status: status,
                 partsJson: partsJson,
+                source: source,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

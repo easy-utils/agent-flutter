@@ -302,5 +302,14 @@
   "defaultPreset": "Default preset",
   "sessionGroupLabel": "Group",
   "subsessionBadge": "Subsession",
-  "subsessionCount": "{count} subsessions"
+  "subsessionCount": "{count} subsessions",
+  "mailboxPrompt": "Message",
+  "mailboxFromSession": "From session",
+  "mailboxFromSystem": "From system",
+  "mailboxInterrupt": "Interrupt",
+  "mailboxEvent": "Event",
+  "deliver": "Deliver to mailbox",
+  "sending": "Sending…",
+  "noMoreMessages": "No more messages",
+  "forked": "Forked"
 }

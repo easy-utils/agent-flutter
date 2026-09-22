@@ -1310,6 +1310,13 @@ class _ChatSessionPageState extends State<ChatSessionPageWidget> {
             org: store.activeSession?.org ?? '',
             repo: store.activeSession?.repo ?? '',
             branch: store.activeSession?.branch ?? '',
+            sessionId: store.activeSessionId ?? '',
+            onOpenSession: (name) {
+              store.pickSession(name);
+              Navigator.of(context).maybePop();
+            },
+            sessionExists: (name) =>
+                store.sessions.any((s) => s.id == name),
           );
         },
       ),

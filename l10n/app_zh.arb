@@ -302,5 +302,14 @@
   "defaultPreset": "默认预设",
   "sessionGroupLabel": "分组",
   "subsessionBadge": "子会话",
-  "subsessionCount": "{count} 个子会话"
+  "subsessionCount": "{count} 个子会话",
+  "mailboxPrompt": "消息",
+  "mailboxFromSession": "来自会话",
+  "mailboxFromSystem": "来自系统",
+  "mailboxInterrupt": "中断",
+  "mailboxEvent": "事件",
+  "deliver": "发送到信箱",
+  "sending": "发送中…",
+  "noMoreMessages": "没有更多消息",
+  "forked": "已派生"
 }

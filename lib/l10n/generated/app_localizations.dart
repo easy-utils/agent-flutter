@@ -1261,6 +1261,60 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{count} 个子会话'**
   String subsessionCount(Object count);
+
+  /// No description provided for @mailboxPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'消息'**
+  String get mailboxPrompt;
+
+  /// No description provided for @mailboxFromSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'来自会话'**
+  String get mailboxFromSession;
+
+  /// No description provided for @mailboxFromSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'来自系统'**
+  String get mailboxFromSystem;
+
+  /// No description provided for @mailboxInterrupt.
+  ///
+  /// In zh, this message translates to:
+  /// **'中断'**
+  String get mailboxInterrupt;
+
+  /// No description provided for @mailboxEvent.
+  ///
+  /// In zh, this message translates to:
+  /// **'事件'**
+  String get mailboxEvent;
+
+  /// No description provided for @deliver.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送到信箱'**
+  String get deliver;
+
+  /// No description provided for @sending.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送中…'**
+  String get sending;
+
+  /// No description provided for @noMoreMessages.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有更多消息'**
+  String get noMoreMessages;
+
+  /// No description provided for @forked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已派生'**
+  String get forked;
 }
 
 class _AppLocalizationsDelegate

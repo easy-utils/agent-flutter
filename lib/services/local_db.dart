@@ -49,6 +49,9 @@ class LocalMessages extends Table {
   IntColumn get orderKey => integer()();
   TextColumn get status => text().withDefault(const Constant('complete'))();
   TextColumn get partsJson => text().withDefault(const Constant('[]'))();
+  /// ORIGIN of the message ('' for agent-authored): user / session:{name} /
+  /// system:{name} / extension-defined. Drives the provenance rendering.
+  TextColumn get source => text().withDefault(const Constant(''))();
 
   @override
   Set<Column> get primaryKey => {sessionId, id};
@@ -116,7 +119,7 @@ class LocalDb extends _$LocalDb {
   final String scope;
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -132,6 +135,12 @@ class LocalDb extends _$LocalDb {
           //           empty delta and strand the whole chain.
           //  v3 → v4: LocalSessions gains the generic `group` column
           //           (subsession parent link). Additive: keep the cache.
+          //  v4 → v5: LocalMessages gains the message ORIGIN `source` column
+          //           (webui parity). Adding the column succeeds only once, so
+          //           use it as the signal to drop the message cache: rows
+          //           cached WITHOUT source would otherwise render a hand-off as
+          //           the reader's own prompt. The next open re-fetches with
+          //           source intact.
           if (from < 2) {
             await m.deleteTable(localMessages.actualTableName);
             await m.createTable(localMessages);
@@ -142,6 +151,13 @@ class LocalDb extends _$LocalDb {
           }
           if (from < 4) {
             await m.addColumn(localSessions, localSessions.group);
+          }
+          if (from < 5) {
+            await m.addColumn(localMessages, localMessages.source);
+            // Drop the (now source-less) message cache + anchors so the next
+            // open refetches a baseline that carries source.
+            await customStatement('DELETE FROM local_messages');
+            await customStatement('DELETE FROM local_sync_state');
           }
         },
       );

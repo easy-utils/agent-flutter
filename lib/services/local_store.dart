@@ -142,6 +142,7 @@ class LocalStore {
         sessionId: sessionId,
         role: m.role,
         prevId: Value(m.prevId),
+        source: Value(m.source),
         createdAt: Value(m.createdAt ?? ''),
         orderKey: order++,
         status: const Value('complete'),
@@ -177,6 +178,7 @@ class LocalStore {
         sessionId: sessionId,
         role: m.role,
         prevId: Value(m.prevId),
+        source: Value(m.source),
         createdAt: Value(m.createdAt),
         orderKey: order++,
         status: Value(m.status),
@@ -268,6 +270,7 @@ class LocalStore {
         status: r.status,
         createdAt: r.createdAt,
         prevId: r.prevId,
+        source: r.source,
         seq: r.orderKey,
         parts: [
           for (final e in (jsonDecode(r.partsJson) as List))
