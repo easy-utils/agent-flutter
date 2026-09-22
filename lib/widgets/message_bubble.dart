@@ -453,12 +453,18 @@ class MessageBubble extends StatelessWidget {
               if (isSending)
                 Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: colors.mutedForeground),
-                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: colors.mutedForeground),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(context.l10n.sending,
+                        style: text.micro.copyWith(
+                            color: colors.mutedForeground, fontSize: 10)),
+                  ]),
                 ),
               Flexible(
                 child: GestureDetector(

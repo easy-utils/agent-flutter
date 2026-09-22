@@ -649,9 +649,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailboxEvent => 'Event';
 
   @override
-  String get deliver => 'Deliver to mailbox';
-
-  @override
   String get sending => 'Sending…';
 
   @override

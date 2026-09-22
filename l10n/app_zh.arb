@@ -308,7 +308,6 @@
   "mailboxFromSystem": "来自系统",
   "mailboxInterrupt": "中断",
   "mailboxEvent": "事件",
-  "deliver": "发送到信箱",
   "sending": "发送中…",
   "noMoreMessages": "没有更多消息",
   "forked": "已派生"

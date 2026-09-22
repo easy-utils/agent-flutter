@@ -308,7 +308,6 @@
   "mailboxFromSystem": "From system",
   "mailboxInterrupt": "Interrupt",
   "mailboxEvent": "Event",
-  "deliver": "Deliver to mailbox",
   "sending": "Sending…",
   "noMoreMessages": "No more messages",
   "forked": "Forked"

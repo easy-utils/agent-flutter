@@ -1292,12 +1292,6 @@ abstract class AppLocalizations {
   /// **'事件'**
   String get mailboxEvent;
 
-  /// No description provided for @deliver.
-  ///
-  /// In zh, this message translates to:
-  /// **'发送到信箱'**
-  String get deliver;
-
   /// No description provided for @sending.
   ///
   /// In zh, this message translates to:

@@ -104,7 +104,7 @@ class _MailboxOverlayState extends State<MailboxOverlay> {
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: _entries.length + ((_hasMore || _loadingMore) ? 1 : 0),
+        itemCount: _entries.length + 1,
         itemBuilder: (_, i) {
           if (i >= _entries.length) {
             return Padding(
@@ -112,10 +112,14 @@ class _MailboxOverlayState extends State<MailboxOverlay> {
               child: Center(
                 child: _loadingMore
                     ? const CircularProgressIndicator()
-                    : TextButton(
-                        onPressed: _loadMore,
-                        child: Text(context.l10n.loadEarlier),
-                      ),
+                    : _hasMore
+                        ? TextButton(
+                            onPressed: _loadMore,
+                            child: Text(context.l10n.loadEarlier),
+                          )
+                        : Text(context.l10n.noMoreMessages,
+                            style: text.micro
+                                .copyWith(color: colors.mutedForeground)),
               ),
             );
           }

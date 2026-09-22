@@ -643,9 +643,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mailboxEvent => '事件';
 
   @override
-  String get deliver => '发送到信箱';
-
-  @override
   String get sending => '发送中…';
 
   @override
