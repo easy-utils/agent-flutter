@@ -178,9 +178,11 @@ class MessagesController extends ChangeNotifier {
       messages = [..._inFlightLocal(), ...chat];
       _renumber();
       hasMore = more;
+      // Advance the anchor regardless of a local mirror, so the next reconcile
+      // is incremental (the mirror only adds persistence).
+      _syncedTipId = chat.isNotEmpty ? chat.last.id : '';
       final l = local;
       if (l != null) {
-        _syncedTipId = chat.isNotEmpty ? chat.last.id : '';
         await l.applyServerMessages(sid, msgs,
             replace: true, tipId: _syncedTipId);
         _syncedOldestId = await l.oldestCachedId(sid);
@@ -481,8 +483,14 @@ class MessagesController extends ChangeNotifier {
             : null;
         final hasToolPart =
             current?.parts.any((p) => p.type == 'tool') ?? false;
-        final sid = _ensureStreamingMsg(
-            event == 'start-step' || (event == 'text-start' && hasToolPart));
+        final key = _streamMsgId(params);
+        final forceNew =
+            event == 'start-step' || (event == 'text-start' && hasToolPart);
+        final sid = (key != null && messages.any((m) => m.id == key))
+            ? (_ensureStreamingMsgAt(key, params['prev_id'] as String? ?? '')
+                ? key
+                : null)
+            : _ensureStreamingMsg(forceNew);
         if (sid == null) break;
         if (event == 'text-start' && params['id'] != null) {
           _ensurePart(sid, params['id'] as String, 'text');
@@ -501,7 +509,7 @@ class MessagesController extends ChangeNotifier {
         break;
       case 'text-delta':
         if (params['id'] != null && params['text'] != null) {
-          final sid = _ensureStreamingMsg(false);
+          final sid = _routeStreamMsg(params);
           if (sid == null) break;
           _appendDelta(sid, params['id'] as String,
               params['text'] as String? ?? '', false);
@@ -509,14 +517,14 @@ class MessagesController extends ChangeNotifier {
         break;
       case 'reasoning-delta':
         if (params['id'] != null && params['text'] != null) {
-          final sid = _ensureStreamingMsg(false);
+          final sid = _routeStreamMsg(params);
           if (sid == null) break;
           _appendDelta(
               sid, 'r${params['id']}', params['text'] as String? ?? '', true);
         }
         break;
       case 'tool-call':
-        final sid = _ensureStreamingMsg(false);
+        final sid = _routeStreamMsg(params);
         if (sid == null) break;
         final tcId = (params['toolCallId'] ?? params['id']) as String?;
         if (tcId != null) {
@@ -557,7 +565,7 @@ class MessagesController extends ChangeNotifier {
         // as a persisted file part) attached to the streaming bubble.
         final code = params['code'] as String?;
         if (code == null || code.isEmpty) break;
-        final sid = _ensureStreamingMsg(false);
+        final sid = _routeStreamMsg(params);
         if (sid == null) break;
         final partId = 'f$code';
         final idx = messages.indexWhere((m) => m.id == sid);
@@ -610,6 +618,29 @@ class MessagesController extends ChangeNotifier {
       default:
         break;
     }
+  }
+
+  /// The server-authored `message_id` stamped on a part, else the current
+  /// streaming bubble. Route by that id; never invent one (webui parity).
+  String? _streamMsgId(Map<String, dynamic> params) {
+    final id = params['message_id'] as String?;
+    return (id != null && id.isNotEmpty) ? id : _streamingId;
+  }
+
+  /// Resolve the streaming bubble for a delta, opening it under the server id
+  /// when the delta arrives before its `message-added`. Null => skip.
+  String? _routeStreamMsg(Map<String, dynamic> params) {
+    final key = _streamMsgId(params);
+    if (key == null) return null;
+    final existing = messages.where((m) => m.id == key).firstOrNull;
+    if (existing != null) {
+      if (!existing.isLocal) return null; // persisted: replay duplicate
+      return key;
+    }
+    if (!_ensureStreamingMsgAt(key, params['prev_id'] as String? ?? '')) {
+      return null;
+    }
+    return key;
   }
 
   /// Insert (or reuse) the server-authored streaming assistant bubble for the
@@ -858,8 +889,9 @@ class MessagesController extends ChangeNotifier {
   /// the anchor. This is the ONLY place the anchor moves forward, so we never
   /// advance past a reply we haven't stored.
   Future<void> _reconcile() async {
-    final l = local;
-    if (l == null) return;
+    // The in-memory merge ALWAYS runs (the server ids/positions must be adopted
+    // even without a local mirror); persistence is best-effort when a mirror is
+    // open.
     final sid = getSessionId();
     try {
       if (_syncedTipId.isEmpty) {
@@ -875,8 +907,11 @@ class MessagesController extends ChangeNotifier {
       }
       _mergeServer(sid, r.messages, tipId: r.tipId);
       notifyListeners();
-      await l.persistMessages(sid, messages, tipId: _syncedTipId);
-      _syncedOldestId = await l.oldestCachedId(sid);
+      final l = local;
+      if (l != null) {
+        await l.persistMessages(sid, messages, tipId: _syncedTipId);
+        _syncedOldestId = await l.oldestCachedId(sid);
+      }
     } catch (_) {}
   }
 

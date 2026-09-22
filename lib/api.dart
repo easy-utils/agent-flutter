@@ -67,11 +67,11 @@ class AgentBindApi {
 
   // Strong-typed Connect client (h2 over TLS), direct to the agent. The
   // transport is built here (caller owns it); the SDK ships only the generated
-  // client + messages, no transport primitive.
-  late final sdk.AgentServiceClient _agent;
+  // client + messages, no transport primitive. LAZY so a test subclass that
+  // overrides every RPC method never touches the network/plugins.
+  late final sdk.AgentServiceClient _agent = _buildAgent(baseUrl, token);
 
-  AgentBindApi({required this.baseUrl, required this.token})
-      : _agent = _buildAgent(baseUrl, token);
+  AgentBindApi({required this.baseUrl, required this.token});
 
   static AgentTls? _tls;
   static Future<void> _loadCa() async {
