@@ -463,7 +463,10 @@ class MessagesController extends ChangeNotifier {
                 .toList();
           }
           _streamingId = addedId;
-          _ensureStreamingMsgAt(addedId, prevId);
+          if (!_ensureStreamingMsgAt(addedId, prevId)) {
+            // Already persisted: a replay of a finished step, not a live one.
+            _streamingId = null;
+          }
         } else if (role == 'user') {
           _upsertServerMessage(addedId, prevId, 'user', src);
         }
@@ -480,6 +483,7 @@ class MessagesController extends ChangeNotifier {
             current?.parts.any((p) => p.type == 'tool') ?? false;
         final sid = _ensureStreamingMsg(
             event == 'start-step' || (event == 'text-start' && hasToolPart));
+        if (sid == null) break;
         if (event == 'text-start' && params['id'] != null) {
           _ensurePart(sid, params['id'] as String, 'text');
         } else if (event == 'reasoning-start' && params['id'] != null) {
@@ -498,6 +502,7 @@ class MessagesController extends ChangeNotifier {
       case 'text-delta':
         if (params['id'] != null && params['text'] != null) {
           final sid = _ensureStreamingMsg(false);
+          if (sid == null) break;
           _appendDelta(sid, params['id'] as String,
               params['text'] as String? ?? '', false);
         }
@@ -505,12 +510,14 @@ class MessagesController extends ChangeNotifier {
       case 'reasoning-delta':
         if (params['id'] != null && params['text'] != null) {
           final sid = _ensureStreamingMsg(false);
+          if (sid == null) break;
           _appendDelta(
               sid, 'r${params['id']}', params['text'] as String? ?? '', true);
         }
         break;
       case 'tool-call':
         final sid = _ensureStreamingMsg(false);
+        if (sid == null) break;
         final tcId = (params['toolCallId'] ?? params['id']) as String?;
         if (tcId != null) {
           _addToolPart(sid, tcId,
@@ -551,6 +558,7 @@ class MessagesController extends ChangeNotifier {
         final code = params['code'] as String?;
         if (code == null || code.isEmpty) break;
         final sid = _ensureStreamingMsg(false);
+        if (sid == null) break;
         final partId = 'f$code';
         final idx = messages.indexWhere((m) => m.id == sid);
         if (idx < 0 || messages[idx].parts.any((p) => p.id == partId)) break;
@@ -606,10 +614,13 @@ class MessagesController extends ChangeNotifier {
 
   /// Insert (or reuse) the server-authored streaming assistant bubble for the
   /// id announced by `message-added{streaming:true}`. No id is minted locally.
-  void _ensureStreamingMsgAt(String id, String prevId) {
-    if (messages.any((m) => m.id == id)) {
+  bool _ensureStreamingMsgAt(String id, String prevId) {
+    final idx = messages.indexWhere((m) => m.id == id);
+    if (idx >= 0) {
+      // A persisted row: this is a replay of a finished step.
+      if (!messages[idx].isLocal) return false;
       _streamingId = id;
-      return;
+      return true;
     }
     messages = [
       ...messages,
@@ -623,6 +634,7 @@ class MessagesController extends ChangeNotifier {
           isLocal: true,
           seq: _allocSeq()),
     ];
+    return true;
   }
 
   /// Render a persisted (non-streaming) row announced via `message-added`
@@ -658,7 +670,11 @@ class MessagesController extends ChangeNotifier {
     ];
   }
 
-  String _ensureStreamingMsg(bool forceNew) {
+  /// Returns the streaming bubble id, or null when the target is a PERSISTED
+  /// (non-local) step — i.e. a reconnect replay of a finished step; callers
+  /// must skip the mutation (streamed part ids differ from the persisted ones,
+  /// so a replayed delta would otherwise fabricate a duplicate part).
+  String? _ensureStreamingMsg(bool forceNew) {
     // Reuse the current streaming bubble unless we are explicitly crossing a
     // step boundary AND it already holds content. This prevents orphaning an
     // empty bubble (e.g. the optimistic one from send() / recover()) when the
@@ -668,6 +684,7 @@ class MessagesController extends ChangeNotifier {
       final idx = messages.indexWhere((m) => m.id == _streamingId);
       if (idx >= 0) {
         final existing = messages[idx];
+        if (!existing.isLocal) return null; // persisted step: replay duplicate
         if (!forceNew || existing.parts.isEmpty) return _streamingId!;
       }
     }
@@ -687,9 +704,17 @@ class MessagesController extends ChangeNotifier {
     return id;
   }
 
+  /// A persisted (non-local) row is a finished step: a streamed mutation for it
+  /// is a reconnect-replay duplicate. Dropping it guards every stream mutator
+  /// (part ensure/append/tool) in one place.
+  bool _isPersisted(String msgId) {
+    final idx = messages.indexWhere((m) => m.id == msgId);
+    return idx >= 0 && !messages[idx].isLocal;
+  }
+
   void _ensurePart(String msgId, String partId, String type) {
     final idx = messages.indexWhere((m) => m.id == msgId);
-    if (idx < 0) return;
+    if (idx < 0 || !messages[idx].isLocal) return;
     if (messages[idx].parts.any((p) => p.id == partId)) return;
     final next = [...messages];
     next[idx] = messages[idx]
@@ -699,7 +724,7 @@ class MessagesController extends ChangeNotifier {
 
   void _appendDelta(String msgId, String partId, String delta, bool reasoning) {
     final idx = messages.indexWhere((m) => m.id == msgId);
-    if (idx < 0) return;
+    if (idx < 0 || !messages[idx].isLocal) return;
     final parts = [...messages[idx].parts];
     final pidx = parts.indexWhere((p) => p.id == partId);
     if (pidx >= 0) {
@@ -717,7 +742,7 @@ class MessagesController extends ChangeNotifier {
   /// Create the tool part as soon as argument streaming begins.
   void _startToolPart(String msgId, String partId, String name) {
     final idx = messages.indexWhere((m) => m.id == msgId);
-    if (idx < 0) return;
+    if (idx < 0 || !messages[idx].isLocal) return;
     if (messages[idx].parts.any((p) => p.id == partId)) return;
     final parts = [...messages[idx].parts];
     parts.add(ChatPart(
@@ -736,7 +761,7 @@ class MessagesController extends ChangeNotifier {
     final sid = _streamingId;
     if (sid == null) return;
     final idx = messages.indexWhere((m) => m.id == sid);
-    if (idx < 0) return;
+    if (idx < 0 || !messages[idx].isLocal) return;
     final parts = messages[idx].parts.map((p) {
       if (p.id != partId) return p;
       final old = p.state ?? ToolState();
@@ -751,7 +776,7 @@ class MessagesController extends ChangeNotifier {
 
   void _addToolPart(String msgId, String partId, String name, Object? input) {
     final idx = messages.indexWhere((m) => m.id == msgId);
-    if (idx < 0) return;
+    if (idx < 0 || !messages[idx].isLocal) return;
     final parts = [...messages[idx].parts];
     final pidx = parts.indexWhere((p) => p.id == partId);
     if (pidx >= 0) {
@@ -780,7 +805,7 @@ class MessagesController extends ChangeNotifier {
     final sid = _streamingId;
     if (sid == null) return;
     final idx = messages.indexWhere((m) => m.id == sid);
-    if (idx < 0) return;
+    if (idx < 0 || !messages[idx].isLocal) return;
     final parts = messages[idx].parts.map((p) {
       if (p.id != partId) return p;
       final old = p.state ?? ToolState();

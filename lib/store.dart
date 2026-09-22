@@ -106,10 +106,29 @@ class AppStore extends ChangeNotifier {
     _sessionReconnect = Timer(delay, startSessionWatch);
   }
 
+  /// Assign the session list, ALWAYS ordered most-recent-first. The server
+  /// snapshot is ordered by `updated_at`, but a live upsert only advances a
+  /// row's `lastMessageAt` in place — without this re-sort the row's timestamp
+  /// changes while its position does not. Recency: lastMessageAt → updatedAt →
+  /// createdAt.
+  void _setSessions(List<Session> list) {
+    final sorted = [...list];
+    sorted.sort((a, b) => _recency(b).compareTo(_recency(a)));
+    sessions = sorted;
+  }
+
+  static int _recency(Session s) {
+    for (final v in [s.lastMessageAt, s.updatedAt, s.createdAt]) {
+      final t = DateTime.tryParse(v);
+      if (t != null) return t.millisecondsSinceEpoch;
+    }
+    return 0;
+  }
+
   void _applySessionEvent(SessionListEvent ev) {
     _sessionAttempt = 0;
     if (ev.snapshot) {
-      sessions = [...ev.upserts];
+      _setSessions(ev.upserts);
       // First ever snapshot on this device: seed read watermarks so historical
       // sessions don't all pop up as unread. Subsequent (new) sessions start
       // unread at 0 so their messages count.
@@ -127,17 +146,18 @@ class AppStore extends ChangeNotifier {
         Prefs.saveReadSeqs();
       }
     } else {
+      final next = [...sessions];
       for (final s in ev.upserts) {
-        final i = sessions.indexWhere((x) => x.id == s.id);
+        final i = next.indexWhere((x) => x.id == s.id);
         if (i == -1) {
-          sessions = [...sessions, s];
+          next.add(s);
         } else {
-          sessions = [...sessions]..[i] = s;
+          next[i] = s;
         }
       }
-      if (ev.removed.isNotEmpty) {
-        sessions = sessions.where((s) => !ev.removed.contains(s.id)).toList();
-      }
+      _setSessions(ev.removed.isEmpty
+          ? next
+          : next.where((s) => !ev.removed.contains(s.id)).toList());
     }
     // The session currently open is being read live: advance its watermark as
     // new messages stream in so returning to the list shows no stale badge.
@@ -168,7 +188,7 @@ class AppStore extends ChangeNotifier {
   /// by [startSessionWatch]; this is a one-shot reconciliation.
   Future<void> refreshSessions() async {
     try {
-      sessions = await api.listSessions();
+      _setSessions(await api.listSessions());
       sessionError = '';
     } catch (e) {
       // Keep the stale list but surface the failure so the UI can show a
