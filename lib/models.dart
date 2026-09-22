@@ -565,6 +565,11 @@ class ChatMessage {
   /// rendered as INCOMING (left, sender avatar) even though role is `user`.
   final String source;
 
+  /// For a local `role:'error'` bubble only: what failed, so the card can be
+  /// labelled ('send' = the prompt RPC failed; 'model' = an upstream/model
+  /// error surfaced on the stream). Never persisted.
+  final String errorKind;
+
   ChatMessage({
     required this.id,
     required this.role,
@@ -575,6 +580,7 @@ class ChatMessage {
     this.prevId = '',
     this.isLocal = false,
     this.source = '',
+    this.errorKind = '',
   });
 
   ChatMessage copyWith({
@@ -585,6 +591,7 @@ class ChatMessage {
     int? seq,
     bool? isLocal,
     String? source,
+    String? errorKind,
   }) => ChatMessage(
     id: id ?? this.id,
     role: role,
@@ -595,6 +602,7 @@ class ChatMessage {
     prevId: prevId ?? this.prevId,
     isLocal: isLocal ?? this.isLocal,
     source: source ?? this.source,
+    errorKind: errorKind ?? this.errorKind,
   );
 }
 

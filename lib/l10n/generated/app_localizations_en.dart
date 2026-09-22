@@ -656,4 +656,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get forked => 'Forked';
+
+  @override
+  String get sendFailedTitle => 'Send failed';
+
+  @override
+  String get modelError => 'Model error';
 }

@@ -310,5 +310,7 @@
   "mailboxEvent": "事件",
   "sending": "发送中…",
   "noMoreMessages": "没有更多消息",
-  "forked": "已派生"
+  "forked": "已派生",
+  "sendFailedTitle": "发送失败",
+  "modelError": "模型错误"
 }

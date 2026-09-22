@@ -341,7 +341,10 @@ class MessageBubble extends StatelessWidget {
     if (isError) {
       parts.insert(
         0,
-        Text(context.l10n.error,
+        Text(
+            msg.errorKind == 'send'
+                ? context.l10n.sendFailedTitle
+                : context.l10n.modelError,
             style: text.micro.copyWith(
                 color: colors.destructive, fontWeight: FontWeight.w600)),
       );

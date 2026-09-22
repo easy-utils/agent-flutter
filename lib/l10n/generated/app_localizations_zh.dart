@@ -650,4 +650,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get forked => '已派生';
+
+  @override
+  String get sendFailedTitle => '发送失败';
+
+  @override
+  String get modelError => '模型错误';
 }

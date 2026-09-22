@@ -589,14 +589,13 @@ class MessagesController extends ChangeNotifier {
         }
         break;
       case 'error':
-      case 'provider-error':
         final errObj = params['error'];
         final content = errObj is String
             ? errObj
             : (errObj is Map
                 ? (errObj['message'] ?? params['message'] ?? 'Unknown error')
                 : (params['message'] ?? 'Unknown error')) as String;
-        _addError(content);
+        _addError(content, 'model');
         sending = false;
         notifyListeners();
         break;
@@ -856,7 +855,7 @@ class MessagesController extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void _addError(String text) {
+  void _addError(String text, [String kind = 'model']) {
     messages = [
       ...messages.where((m) => m.status != 'streaming'),
       ChatMessage(
@@ -864,6 +863,7 @@ class MessagesController extends ChangeNotifier {
           role: 'error',
           status: 'error',
           isLocal: true,
+          errorKind: kind,
           parts: [ChatPart(id: 'p${DateTime.now().microsecondsSinceEpoch}', type: 'text', text: text)],
           createdAt: DateTime.now().toIso8601String(),
           seq: _allocSeq()),
@@ -871,10 +871,22 @@ class MessagesController extends ChangeNotifier {
     _streamingId = null;
   }
 
+  /// Drop every local error bubble. Called when the user sends a new prompt: an
+  /// error is a TRANSIENT state, cleared by the next send (not only by a
+  /// successful turn).
+  void _clearErrors() {
+    if (!messages.any((m) => m.role == 'error')) return;
+    messages = messages.where((m) => m.role != 'error').toList();
+  }
+
   Future<void> send(String text, [List<UploadedFile> attachments = const []]) async {
     final trimmed = text.trim();
     if ((trimmed.isEmpty && attachments.isEmpty) || sending) return;
     sending = true;
+    // An error is TRANSIENT: sending a new prompt clears any prior error card,
+    // regardless of whether the previous turn finished. Done BEFORE the RPC so
+    // a send failure re-adds its own error below without removing it.
+    _clearErrors();
     // The platform splices attachment codes into `[附件 …file:<code>…]`
     // references; the client only sends the codes, never the rendered text.
     final codes = attachments.map((a) => a.code).toList();
@@ -887,7 +899,8 @@ class MessagesController extends ChangeNotifier {
       await api.prompt(getSessionId(), trimmed, attachments: codes);
       // The send is durable at `accepted`; the bubble follows from the stream.
     } catch (e) {
-      _addError(I18n.now.sendFailed('$e'));
+      // The card TITLE already says what failed, so the body is the raw error.
+      _addError('$e', 'send');
       sending = false;
       notifyListeners();
     }

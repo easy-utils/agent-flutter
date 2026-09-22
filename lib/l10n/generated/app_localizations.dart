@@ -1309,6 +1309,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已派生'**
   String get forked;
+
+  /// No description provided for @sendFailedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送失败'**
+  String get sendFailedTitle;
+
+  /// No description provided for @modelError.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型错误'**
+  String get modelError;
 }
 
 class _AppLocalizationsDelegate

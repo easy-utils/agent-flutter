@@ -310,5 +310,7 @@
   "mailboxEvent": "Event",
   "sending": "Sending…",
   "noMoreMessages": "No more messages",
-  "forked": "Forked"
+  "forked": "Forked",
+  "sendFailedTitle": "Send failed",
+  "modelError": "Model error"
 }
